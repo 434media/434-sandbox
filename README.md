@@ -20,7 +20,7 @@ docs/               ← the brief for each deliverable
 ## Run it
 
 ```bash
-pnpm install   # or npm install
+pnpm install
 pnpm dev       # http://localhost:3000
 ```
 
