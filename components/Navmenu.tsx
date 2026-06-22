@@ -19,40 +19,41 @@ interface NavigationItem {
   delay: number
 }
 
+// Sandbox: hrefs are "#" so nothing 404s — visual skeleton only.
 const navigationItems: NavigationItem[] = [
   {
     id: "work",
     title: "Work",
     subtitle: "See our portfolio",
-    href: "/work",
+    href: "#",
     delay: 0.1,
   },
   {
     id: "feed",
     title: "The Feed",
     subtitle: "Insights & Stories",
-    href: "https://www.digitalcanvas.community/thefeed",
+    href: "#",
     delay: 0.15,
   },
   {
     id: "shop",
     title: "Shop",
     subtitle: "Founders Tee Available Now",
-    href: "/shop",
+    href: "#",
     delay: 0.2,
   },
   {
     id: "events",
     title: "Events",
     subtitle: "Where Networks Meet Action",
-    href: "https://www.devsa.community/events",
+    href: "#",
     delay: 0.25,
   },
   {
     id: "contact",
     title: "Contact",
     subtitle: "Take the next step",
-    href: "/contact",
+    href: "#",
     delay: 0.3,
   },
 ]

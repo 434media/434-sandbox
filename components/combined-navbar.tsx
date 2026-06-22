@@ -11,10 +11,12 @@ import { useMobile } from "../hooks/use-mobile"
 
 // Internal links lead — they keep visitors on the application.
 // External destinations follow and are visually marked with ↗.
+// Sandbox: hrefs point to "#" so nothing 404s — these are here to show the
+// design system, not to navigate. Wire real destinations as you build.
 const desktopLinks = [
-  { href: "/work", label: "Work" },
-  { href: "/shop", label: "Shop" },
-  { href: "https://www.digitalcanvas.community/thefeed", label: "The Feed" },
+  { href: "#", label: "Work" },
+  { href: "#", label: "Shop" },
+  { href: "#", label: "The Feed" },
 ]
 
 // Custom hook to check if component has mounted
@@ -77,7 +79,7 @@ export function CombinedNavbar() {
           <div className="flex items-center justify-between">
             {/* Logo */}
             <Link
-              href="/"
+              href="#"
               className="text-white font-menda-black text-base sm:text-lg flex items-center group leading-none shrink-0"
               aria-label="434 Media - Home"
             >
@@ -121,12 +123,8 @@ export function CombinedNavbar() {
 
                 {/* Contact CTA — visually distinct, treated as the closing prompt */}
                 <Link
-                  href="/contact"
-                  className={`group ml-1 inline-flex items-center gap-1.5 rounded-full px-4 py-1.5 font-geist-sans text-[13px] font-medium leading-none transition-all duration-200 ${
-                    pathname === "/contact"
-                      ? "bg-white text-neutral-950"
-                      : "bg-white text-neutral-950 hover:bg-neutral-200 hover:gap-2"
-                  }`}
+                  href="#"
+                  className="group ml-1 inline-flex items-center gap-1.5 rounded-full px-4 py-1.5 font-geist-sans text-[13px] font-medium leading-none transition-all duration-200 bg-white text-neutral-950 hover:bg-neutral-200 hover:gap-2"
                   aria-label="Contact 434 MEDIA"
                 >
                   Contact

@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react"
 import { motion, AnimatePresence } from "motion/react"
 import { usePathname } from "next/navigation"
 import Link from "next/link"
-import { ArrowUpRight, Mail, MapPin } from "lucide-react"
+import { Mail, MapPin } from "lucide-react"
 import { InstagramIcon } from "@/components/icons/InstagramIcon"
 import { ScrambleText } from "./ScrambleText"
 import { Newsletter } from "./Newsletter"
@@ -21,28 +21,29 @@ export default function Footer() {
     return null
   }
 
-  // "Build with us" — close the loop on this page.
+  // Sandbox: every href is "#" so nothing 404s. These show the design system's
+  // footer structure — wire real destinations as the site is built out.
   const buildLinks = [
-    { label: "Start a project", href: "/contact", emphasis: true },
-    { label: "Our work", href: "/work" },
-    { label: "Shop TXMX", href: "/shop" },
+    { label: "Start a project", href: "#", emphasis: true },
+    { label: "Our work", href: "#" },
+    { label: "Shop TXMX", href: "#" },
   ]
 
   const legalLinks = [
-    { label: "Privacy", href: "/privacy-policy" },
-    { label: "Terms", href: "/terms-of-service" },
+    { label: "Privacy", href: "#" },
+    { label: "Terms", href: "#" },
   ]
 
   // Sub-brands and partners we operate or co-produce with.
   const subBrands = [
-    { label: "TXMX Boxing", href: "https://www.txmxboxing.com/", external: true },
-    { label: "Vemos Vamos", href: "https://www.vemosvamos.com/", external: true },
-    { label: "Digital Canvas", href: "https://www.digitalcanvas.community", external: true },
-    { label: "AMPD Project", href: "https://www.ampdproject.com/", external: true },
-    { label: "Salute to Troops", href: "https://www.salutetotroops.com/", external: true },
-    { label: "AIM R&D Summit", href: "https://www.aimsatx.com/", external: true },
-    { label: "SDOH", href: "/sdoh" },
-    { label: "DEVSA", href: "https://devsa.community", external: true },
+    { label: "TXMX Boxing", href: "#" },
+    { label: "Vemos Vamos", href: "#" },
+    { label: "Digital Canvas", href: "#" },
+    { label: "AMPD Project", href: "#" },
+    { label: "Salute to Troops", href: "#" },
+    { label: "AIM R&D Summit", href: "#" },
+    { label: "SDOH", href: "#" },
+    { label: "DEVSA", href: "#" },
   ]
 
   useEffect(() => {
@@ -102,7 +103,7 @@ export default function Footer() {
                   {/* Brand column — elevator pitch + social */}
                   <div className="col-span-2 md:col-span-3">
                     <h2 id="footer-heading" className="font-menda-black text-white text-2xl leading-none mb-4">
-                      <Link href="/" aria-label="434 Media — Home">
+                      <Link href="#" aria-label="434 Media — Home">
                         <ScrambleText
                           text="434 MEDIA"
                           className="inline-block cursor-pointer"
@@ -120,9 +121,7 @@ export default function Footer() {
                     {/* Social */}
                     <div className="flex items-center gap-3">
                       <a
-                        href="https://www.linkedin.com/company/434media"
-                        target="_blank"
-                        rel="noopener noreferrer"
+                        href="#"
                         className="text-neutral-500 hover:text-white transition-colors duration-200"
                         aria-label="Follow 434 MEDIA on LinkedIn"
                       >
@@ -138,9 +137,7 @@ export default function Footer() {
                         </svg>
                       </a>
                       <a
-                        href="https://www.instagram.com/digitalcanvashq/"
-                        target="_blank"
-                        rel="noopener noreferrer"
+                        href="#"
                         className="text-neutral-500 hover:text-white transition-colors duration-200"
                         aria-label="Follow 434 MEDIA on Instagram"
                       >
@@ -172,7 +169,7 @@ export default function Footer() {
                     </ul>
                     <div className="space-y-2 pt-5 border-t border-white/5">
                       <a
-                        href="mailto:build@434media.com"
+                        href="#"
                         className="group flex items-start gap-2 font-geist-sans text-sm text-neutral-400 hover:text-white transition-colors duration-200"
                       >
                         <Mail className="h-3.5 w-3.5 mt-0.5 shrink-0" aria-hidden="true" />
@@ -197,27 +194,12 @@ export default function Footer() {
                     <ul className="grid grid-cols-2 gap-x-4 gap-y-2.5">
                       {subBrands.map((link) => (
                         <li key={link.label}>
-                          {link.external ? (
-                            <a
-                              href={link.href}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="group inline-flex items-center gap-1 font-geist-sans text-sm text-neutral-400 hover:text-white transition-colors duration-200 leading-tight"
-                            >
-                              <span>{link.label}</span>
-                              <ArrowUpRight
-                                className="h-3 w-3 text-neutral-600 transition-all duration-200 group-hover:text-white group-hover:-translate-y-0.5 group-hover:translate-x-0.5"
-                                aria-hidden="true"
-                              />
-                            </a>
-                          ) : (
-                            <Link
-                              href={link.href}
-                              className="font-geist-sans text-sm text-neutral-400 hover:text-white transition-colors duration-200 leading-tight"
-                            >
-                              {link.label}
-                            </Link>
-                          )}
+                          <Link
+                            href={link.href}
+                            className="font-geist-sans text-sm text-neutral-400 hover:text-white transition-colors duration-200 leading-tight"
+                          >
+                            {link.label}
+                          </Link>
                         </li>
                       ))}
                     </ul>
@@ -257,7 +239,7 @@ export default function Footer() {
                   ))}
                   <span className="font-geist-sans text-xs text-neutral-700 leading-none" aria-hidden="true">·</span>
                   <a
-                    href="mailto:build@434media.com"
+                    href="#"
                     className="font-geist-sans text-xs text-neutral-600 hover:text-neutral-300 transition-colors duration-200 leading-none"
                   >
                     build@434media.com
