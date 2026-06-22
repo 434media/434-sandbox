@@ -6,7 +6,7 @@ A **sandbox** for the Digital Canvas cohort's **Builders** squad. It's a small *
 app/
   layout.tsx        ← shared shell: 434 navbar + footer + brand fonts
   page.tsx          ← home: the 434 hero video (design-system reference)
-  intake-form/      ← deliverable 1 — build the underwriter intake form here
+  intake-form/      ← deliverable 1 — build the discovery intake form (sales funnel) here
   sales-deck/       ← deliverable 2 — build the web sales deck here
 components/         ← navbar, footer, hero + helpers (lifted from production)
 docs/               ← the brief for each deliverable
@@ -14,7 +14,7 @@ docs/               ← the brief for each deliverable
 
 | Route | What to build | Brief |
 |-------|---------------|-------|
-| `/intake-form` | The underwriter **intake form** | [docs/intake-form.md](./docs/intake-form.md) |
+| `/intake-form` | The **discovery intake form** (top of the 434 sales funnel) | [docs/intake-form.md](./docs/intake-form.md) |
 | `/sales-deck` | A web-based **sales deck** (Lab Cafe example) | [docs/sales-deck.md](./docs/sales-deck.md) |
 
 ## Run it
@@ -32,7 +32,7 @@ The home page shows the 434 hero video inside the navbar/footer shell. `/intake-
 
 Nothing here is connected to live 434 systems — you can't break the admin platform or any production site from here.
 
-- The **real** underwriter intake (live submissions) already lives in the 434 admin app. The form you build here is a **prototype/redesign**; when it's reviewed, the lead dev ports the result into the admin — **you never push to the production repo.**
+- The **discovery intake form** is **phase 1** of the 434 sales funnel (form → lead → outbound email drip). Build the form here as a **prototype**; when it's reviewed, the lead dev ports the result into the real stack — **you never push to the production repo.** Get **design direction from Content** before locking visuals.
 - Do **not** connect the intake form to real production data or live endpoints. Mock the submit while you build (ask the lead dev if unsure).
 - The sales deck has no such constraint — it's a standalone marketing page and can be deployed on its own.
 
