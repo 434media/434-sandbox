@@ -1,6 +1,6 @@
-# Sales Deck
+# Sales Deck — brief
 
-A **web-based sales deck** — the 434 Media / Digital Canvas pitch as a scrollable or slide-style web page, not a PDF.
+A **web-based sales deck** — the 434 Media / Digital Canvas pitch as a scrollable or slide-style web page, not a PDF. Build it at the [`/sales-deck`](../app/sales-deck) route.
 
 ## What you're building
 
@@ -14,7 +14,7 @@ Think about:
 
 ## Good to know
 
-- **No production coupling.** This is a standalone marketing page — it can be **deployed on its own** (its own preview/URL) straight from this repo. Nice early win: get a deployable skeleton up, then iterate.
+- **No production coupling.** This is a standalone marketing page — it can be **deployed on its own** straight from this repo. Nice early win: get a deployable skeleton up, then iterate.
 - Keep content easy to edit (data/markdown-driven if you can) so copy changes don't mean code surgery.
 
 ## Done looks like

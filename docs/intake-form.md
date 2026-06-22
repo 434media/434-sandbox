@@ -1,10 +1,10 @@
-# Intake Form
+# Intake Form — brief
 
-A web form that captures **venture-credible problems** from corporate/institutional underwriters and sponsors — the front door of the Digital Canvas pipeline.
+A web form that captures **venture-credible problems** from corporate/institutional underwriters and sponsors — the front door of the Digital Canvas pipeline. Build it at the [`/intake-form`](../app/intake-form) route.
 
 ## What you're building
 
-A clean, friendly multi-step form that pulls out a *specific, real* problem, not a vague one. The Underwriter Onboarding squad designs the **question framework** (in the SOPs → Digital Canvas → Frame space); you engineer the form from it.
+A clean, friendly multi-step form that pulls out a *specific, real* problem, not a vague one. The Underwriter Onboarding squad designs the **question framework** (SOPs → Digital Canvas → Frame); you engineer the form from it.
 
 Capture, at minimum:
 - Who's submitting (name, role, org, contact email)
@@ -22,4 +22,4 @@ Capture, at minimum:
 
 ## Done looks like
 
-A working, reviewed form (feature branch → PR → merged to `main`) with a clear submit flow, sensible validation, and the question set the Onboarding squad finalized. Add a short note in the PR of any decisions or open questions.
+A working, reviewed form (feature branch → PR → merged to `main`) with a clear submit flow, sensible validation, and the question set the Onboarding squad finalized. Note any decisions or open questions in the PR.
