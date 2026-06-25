@@ -149,7 +149,7 @@ function ScoreHistogram({ prospects }: { prospects: Prospect[] }) {
   );
 }
 
-/* ---- Scatter (unchanged) ---- */
+/* ---- Scatter (with fixed dotVariants) ---- */
 const SCATTER_GRADE_COLOR: Record<Grade, string> = { "A+": "#10b981", "A": "#14b8a6", "B": "#38bdf8", "C": "#fbbf24", "D": "#f87171" };
 
 function Scatter({ prospects }: { prospects: Prospect[] }) {
@@ -158,14 +158,28 @@ function Scatter({ prospects }: { prospects: Prospect[] }) {
   const px = (v: number) => L + (v / 100) * (R - L);
   const py = (v: number) => B - (v / 100) * (B - T);
   const TX = px(55), TY = py(60);
+
+  // ✅ FIX: add `as const` to repeatType
   const dotVariants = {
-    idle: (i: number) => ({ y: 0, x: 0, transition: { duration: 2 + Math.random() * 2, repeat: Infinity, repeatType: "reverse", delay: i * 0.02, ease: "easeInOut" } }),
+    idle: (i: number) => ({
+      y: 0,
+      x: 0,
+      transition: {
+        duration: 2 + Math.random() * 2,
+        repeat: Infinity,
+        repeatType: "reverse" as const,
+        delay: i * 0.02,
+        ease: "easeInOut",
+      },
+    }),
     hover: { y: -6, scale: 1.4, transition: { duration: 0.2 } },
     tap: { scale: 0.8, transition: { duration: 0.1 } },
   };
+
   const handleDotClick = (company: string, grade: Grade, fit: number, intent: number) => {
     alert(`${company}\nGrade: ${grade}\nFit: ${fit}\nIntent: ${intent}\n\nClick "Search & Add" to add this prospect.`);
   };
+
   return (
     <div>
       <p className="mb-2 text-[11px] text-neutral-400">Fit × Intent — top-right quadrant = highest priority prospects. <strong>Click any dot</strong> for details.</p>
@@ -180,7 +194,24 @@ function Scatter({ prospects }: { prospects: Prospect[] }) {
           const cx = px(p.x), cy = py(p.y);
           const r = p.grade === "A+" ? 4.5 : p.grade === "A" ? 3.8 : 3;
           return (
-            <motion.circle key={i} cx={cx} cy={cy} r={r} fill={SCATTER_GRADE_COLOR[p.grade]} fillOpacity={0.8} stroke="white" strokeWidth={1.5} style={{ cursor: "pointer" }} animate="idle" custom={i} variants={dotVariants} whileHover="hover" whileTap="tap" onClick={() => handleDotClick(p.company, p.grade, p.y, p.x)} title={`${p.company} · Fit ${p.y} / Intent ${p.x} · ${p.grade}`} />
+            <motion.circle
+              key={i}
+              cx={cx}
+              cy={cy}
+              r={r}
+              fill={SCATTER_GRADE_COLOR[p.grade]}
+              fillOpacity={0.8}
+              stroke="white"
+              strokeWidth={1.5}
+              style={{ cursor: "pointer" }}
+              animate="idle"
+              custom={i}
+              variants={dotVariants}
+              whileHover="hover"
+              whileTap="tap"
+              onClick={() => handleDotClick(p.company, p.grade, p.y, p.x)}
+              title={`${p.company} · Fit ${p.y} / Intent ${p.x} · ${p.grade}`}
+            />
           );
         })}
         <text x={(L + R) / 2} y={H - 6} textAnchor="middle" fontSize="10" fill="#a3a3a3">Intent score →</text>
