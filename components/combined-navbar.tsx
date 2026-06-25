@@ -1,13 +1,13 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import Link from "next/link"
-import { motion } from "motion/react"
-import { usePathname } from "next/navigation"
-import { ArrowUpRight } from "lucide-react"
-import { ScrambleText } from "./ScrambleText"
-import NavMenu from "./Navmenu"
-import { useMobile } from "../hooks/use-mobile"
+import { useState, useEffect } from "react";
+import Link from "next/link";
+import { motion } from "motion/react";
+import { usePathname } from "next/navigation";
+import { ArrowUpRight } from "lucide-react";
+import { ScrambleText } from "./ScrambleText";
+import NavMenu from "./Navmenu";
+import { useMobile } from "../hooks/use-mobile";
 
 // Internal links lead — they keep visitors on the application.
 // External destinations follow and are visually marked with ↗.
@@ -17,53 +17,53 @@ const desktopLinks = [
   { href: "#", label: "Work" },
   { href: "#", label: "Shop" },
   { href: "#", label: "The Feed" },
-]
+];
 
 // Custom hook to check if component has mounted
 function useHasMounted() {
-  const [hasMounted, setHasMounted] = useState(false)
+  const [hasMounted, setHasMounted] = useState(false);
 
   useEffect(() => {
-    setHasMounted(true)
-  }, [])
+    setHasMounted(true);
+  }, []);
 
-  return hasMounted
+  return hasMounted;
 }
 
 export function CombinedNavbar() {
-  const [isScrolled, setIsScrolled] = useState(false)
-  const [isActionMenuOpen, setIsActionMenuOpen] = useState(false)
-  const pathname = usePathname()
-  const isMobile = useMobile()
-  const hasMounted = useHasMounted()
+  const [isScrolled, setIsScrolled] = useState(false);
+  const [isActionMenuOpen, setIsActionMenuOpen] = useState(false);
+  const pathname = usePathname();
+  const isMobile = useMobile();
+  const hasMounted = useHasMounted();
 
   // Hide the public navbar entirely on admin routes — admin has its own shell.
   // Also hide on the full-screen squads deck (/squads).
   if (pathname?.startsWith("/admin") || pathname?.startsWith("/squads")) {
-    return null
+    return null;
   }
 
   // Handle scroll events with throttling for performance
   useEffect(() => {
-    let ticking = false
+    let ticking = false;
 
     const handleScroll = () => {
       if (!ticking) {
         window.requestAnimationFrame(() => {
-          setIsScrolled(window.scrollY > 10)
-          ticking = false
-        })
-        ticking = true
+          setIsScrolled(window.scrollY > 10);
+          ticking = false;
+        });
+        ticking = true;
       }
-    }
+    };
 
-    window.addEventListener("scroll", handleScroll, { passive: true })
-    return () => window.removeEventListener("scroll", handleScroll)
-  }, [])
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
   const toggleActionMenu = () => {
-    setIsActionMenuOpen(!isActionMenuOpen)
-  }
+    setIsActionMenuOpen(!isActionMenuOpen);
+  };
 
   return (
     <>
@@ -96,11 +96,11 @@ export function CombinedNavbar() {
               <div className="hidden md:flex items-center gap-2">
                 <nav className="flex items-center gap-1">
                   {desktopLinks.map((link) => {
-                    const isActive = pathname === link.href || pathname?.startsWith(link.href + "/")
-                    const isExternal = link.href.startsWith("http")
+                    const isActive = pathname === link.href || pathname?.startsWith(link.href + "/");
+                    const isExternal = link.href.startsWith("http");
                     return (
                       <Link
-                        key={link.href}
+                        key={link.label} // ✅ fixed: use unique label as key
                         href={link.href}
                         {...(isExternal ? { target: "_blank", rel: "noopener noreferrer" } : {})}
                         className={`group inline-flex items-center gap-1 font-geist-sans text-[13px] font-medium leading-none px-3 py-1.5 rounded-md transition-all duration-200 ${
@@ -117,7 +117,7 @@ export function CombinedNavbar() {
                           />
                         )}
                       </Link>
-                    )
+                    );
                   })}
                 </nav>
 
@@ -191,5 +191,5 @@ export function CombinedNavbar() {
       {/* Action Speaks Louder Menu */}
       <NavMenu isOpen={isActionMenuOpen} onClose={() => setIsActionMenuOpen(false)} id="nav-menu" />
     </>
-  )
+  );
 }
