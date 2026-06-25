@@ -42,10 +42,12 @@ export interface Prospect {
   fundingStage: FundingStage;
   employees: EmployeeBand;
   discoveredAt: Date;
+  // Fit sub-scores
   hostsConferences: boolean;
   hostsMeetups: boolean;
   runsWebinars: boolean;
   communityBuilding: boolean;
+  // Intent — website signals
   outdatedWebsite: boolean;
   noVideoContent: boolean;
   noPodcast: boolean;
@@ -54,22 +56,25 @@ export interface Prospect {
   inactiveBlog: boolean;
   weakLinkedIn: boolean;
   noCaseStudies: boolean;
+  // Intent — hiring signals
   hiringDemandGen: boolean;
   hiringMktgManager: boolean;
   hiringGrowthMktg: boolean;
   hiringSalesDev: boolean;
   hiringBizDev: boolean;
+  // Intent — business signals
   fundingRound: boolean;
   productLaunch: boolean;
   acquisition: boolean;
   expansion: boolean;
   rebrand: boolean;
   newExecutive: boolean;
+  // Computed
   fitScore: number;
   intentScore: number;
   finalScore: number;
   grade: Grade;
-  estimatedDealValue: number;
+  estimatedDealValue: number; // USD
 }
 
 export interface SearchedProspect extends Prospect {
@@ -81,7 +86,7 @@ export interface SearchedProspect extends Prospect {
   tailoredEmail: string;
 }
 
-/* ---- scoring constants and functions (unchanged) ---- */
+/* ---- scoring ---- */
 const FIT_INDUSTRY: Partial<Record<Industry, number>> = {
   "Cybersecurity": 25,
   "Defense Technology": 25,
@@ -180,7 +185,7 @@ export function getAutomatedAction(grade: Grade): string {
   }
 }
 
-/* ---- mock data generator (deterministic) ---- */
+/* ---- mock data generator ---- */
 const INDUSTRIES: Industry[] = [
   "Cybersecurity", "Defense Technology", "Healthcare Tech", "Bioscience",
   "AI / SaaS", "Advanced Manufacturing", "Venture Capital", "Government Contractor",
@@ -285,6 +290,7 @@ export function generateProspects(count: number, seed: number): Prospect[] {
     const intentScore = calcIntentScore(base);
     const finalScore = calcFinalScore(fitScore, intentScore);
     const grade = getGrade(finalScore);
+
     const dealByGrade: Record<Grade, [number, number]> = {
       "A+": [40000, 80000],
       "A":  [20000, 45000],
@@ -369,7 +375,7 @@ function generateSummary(p: Prospect): string {
   }
   parts.push(`Intent score (${p.intentScore}/100): ${intentParts.join(' ')}`);
   parts.push(`Final score (${p.finalScore}/100) is weighted 60% fit + 40% intent. Grade: ${p.grade}.`);
-  return parts.join(' ');
+  return parts.join('\n\n');
 }
 
 function generateSources(p: Prospect): string[] {
@@ -419,6 +425,7 @@ function generateTailoredEmail(p: Prospect): string {
   body += `Dear ${p.company} team,\n\n`;
   body += `I hope this message finds you well. We at 434 Media have been following ${p.company}'s impressive growth in the ${p.industry} space. `;
   body += `Our analysis indicates that your company is a top-tier prospect (Grade ${p.grade}) with a strong fit (${p.fitScore}/100) and significant intent signals (${p.intentScore}/100).\n\n`;
+
   const signals = [];
   if (p.hiringDemandGen || p.hiringMktgManager || p.hiringGrowthMktg) signals.push('your recent hiring for marketing and growth roles');
   if (p.fundingRound) signals.push('your recent funding round');
@@ -432,7 +439,8 @@ function generateTailoredEmail(p: Prospect): string {
   } else {
     body += `We believe there is a strong synergy between our expertise and your current trajectory.\n\n`;
   }
-  body += `We would love to schedule a brief 15‑minute call to discuss how we can support your goals. Let me know a time that works for you.\n\n`;
+
+  body += `We would love to schedule a brief call to discuss how we can support your goals. Let me know a time that works for you.\n\n`;
   body += `Looking forward to connecting,\n\n[Your Name]\n434 Media\n[Your Phone]\n[Your Email]`;
   return body;
 }
@@ -445,8 +453,7 @@ export function createProspectFromSearch(companyName: string): SearchedProspect 
   const location = pick(LOCATIONS, rng);
   const fundingStage = pick(FUNDING_STAGES, rng);
   const employees = pick(EMPLOYEE_BANDS, rng);
-  const nameLen = companyName.length;
-  const bias = nameLen % 5;
+  const bias = companyName.length % 5;
 
   const base = {
     id: `PR-SEARCH-${Date.now()}-${seed}`,
@@ -485,6 +492,7 @@ export function createProspectFromSearch(companyName: string): SearchedProspect 
   const intentScore = calcIntentScore(base);
   const finalScore = calcFinalScore(fitScore, intentScore);
   const grade = getGrade(finalScore);
+
   const dealByGrade: Record<Grade, [number, number]> = {
     "A+": [40000, 80000],
     "A":  [20000, 45000],
@@ -496,6 +504,7 @@ export function createProspectFromSearch(companyName: string): SearchedProspect 
   const estimatedDealValue = Math.round((lo + rng() * (hi - lo)) / 1000) * 1000;
 
   const prospect: Prospect = { ...base, fitScore, intentScore, finalScore, grade, estimatedDealValue };
+
   const summary = generateSummary(prospect);
   const sources = generateSources(prospect);
   const { email, phone, addresses } = generateContactInfo(companyName, location, rng);

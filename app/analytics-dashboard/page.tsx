@@ -149,7 +149,7 @@ function ScoreHistogram({ prospects }: { prospects: Prospect[] }) {
   );
 }
 
-/* ---- Scatter (fixed dotVariants) ---- */
+/* ---- Scatter with fully fixed animations ---- */
 const SCATTER_GRADE_COLOR: Record<Grade, string> = { "A+": "#10b981", "A": "#14b8a6", "B": "#38bdf8", "C": "#fbbf24", "D": "#f87171" };
 
 function Scatter({ prospects }: { prospects: Prospect[] }) {
@@ -159,7 +159,7 @@ function Scatter({ prospects }: { prospects: Prospect[] }) {
   const py = (v: number) => B - (v / 100) * (B - T);
   const TX = px(55), TY = py(60);
 
-  // ✅ FIXED: added `as const` to repeatType and ease
+  // ✅ Fully typed with `as const` to satisfy TypeScript
   const dotVariants = {
     idle: (i: number) => ({
       y: 0,
@@ -210,8 +210,10 @@ function Scatter({ prospects }: { prospects: Prospect[] }) {
               whileHover="hover"
               whileTap="tap"
               onClick={() => handleDotClick(p.company, p.grade, p.y, p.x)}
-              title={`${p.company} · Fit ${p.y} / Intent ${p.x} · ${p.grade}`}
-            />
+            >
+              {/* use <title> for tooltip instead of `title` attribute */}
+              <title>{`${p.company} · Fit ${p.y} / Intent ${p.x} · ${p.grade}`}</title>
+            </motion.circle>
           );
         })}
         <text x={(L + R) / 2} y={H - 6} textAnchor="middle" fontSize="10" fill="#a3a3a3">Intent score →</text>
@@ -317,7 +319,7 @@ function MorningSummary({ k, onScan, isScanning }: { k: ReturnType<typeof kpis>;
   );
 }
 
-/* ---- Search Panel (no API) ---- */
+/* ---- Search Panel ---- */
 function SearchPanel({ onAddProspect }: { onAddProspect: (p: Prospect) => void }) {
   const [query, setQuery] = useState("");
   const [suggestions, setSuggestions] = useState<string[]>([]);
