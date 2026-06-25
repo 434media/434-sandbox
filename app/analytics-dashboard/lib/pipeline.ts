@@ -89,8 +89,7 @@ export interface SearchedProspect extends Prospect {
   tailoredEmail: string;
 }
 
-/* ---- scoring (unchanged) ---- */
-
+/* ---- scoring constants and functions (unchanged) ---- */
 const FIT_INDUSTRY: Partial<Record<Industry, number>> = {
   "Cybersecurity": 25,
   "Defense Technology": 25,
@@ -189,8 +188,7 @@ export function getAutomatedAction(grade: Grade): string {
   }
 }
 
-/* ---- mock data generator (unchanged) ---- */
-
+/* ---- mock data generator (deterministic, seeded) ---- */
 const INDUSTRIES: Industry[] = [
   "Cybersecurity", "Defense Technology", "Healthcare Tech", "Bioscience",
   "AI / SaaS", "Advanced Manufacturing", "Venture Capital", "Government Contractor",
@@ -310,69 +308,66 @@ export function generateProspects(count: number, seed: number): Prospect[] {
   });
 }
 
-/* ---- Search & Add with AI‑powered summary, sources, and contact info ---- */
-
+/* ---- helpers for search (mock only) ---- */
 function hashString(str: string): number {
   let hash = 0;
   for (let i = 0; i < str.length; i++) {
-    const char = str.charCodeAt(i);
-    hash = (hash << 5) - hash + char;
-    hash = hash & hash;
+    hash = ((hash << 5) - hash + str.charCodeAt(i)) & 0xffffffff;
   }
   return Math.abs(hash);
 }
 
 /**
- * Generates a human-readable summary explaining the scores.
+ * Generates a detailed human-readable summary explaining the scores.
  */
 function generateSummary(p: Prospect): string {
   const parts: string[] = [];
 
-  // Fit explanation
+  // ---- FIT explanation ----
   const fitParts: string[] = [];
-  fitParts.push(`Industry (${p.industry}) is a high-value sector.`);
-  fitParts.push(`Location (${p.location}) aligns with our Texas focus.`);
-  fitParts.push(`Funding stage (${p.fundingStage}) indicates ${p.fundingStage === 'Series B+' ? 'strong backing' : 'growth potential'}.`);
-  fitParts.push(`Employee size (${p.employees}) suggests ${p.employees === '10–50' ? 'agility' : 'established operations'}.`);
+  fitParts.push(`Industry (${p.industry}) is a high-value sector, contributing strongly to Fit.`);
+  fitParts.push(`Location (${p.location}) aligns with our Texas focus, giving a solid fit bonus.`);
+  fitParts.push(`Funding stage (${p.fundingStage}) indicates ${p.fundingStage === 'Series B+' ? 'strong backing and maturity' : 'growth potential'}.`);
+  fitParts.push(`Employee size (${p.employees}) suggests ${p.employees === '10–50' ? 'agility and quick decision-making' : 'established operations with more resources'}.`);
   if (p.hostsConferences || p.hostsMeetups || p.runsWebinars || p.communityBuilding) {
     const events = [];
     if (p.hostsConferences) events.push('conferences');
     if (p.hostsMeetups) events.push('meetups');
     if (p.runsWebinars) events.push('webinars');
     if (p.communityBuilding) events.push('community building');
-    fitParts.push(`Active in ${events.join(', ')} – strong community engagement.`);
+    fitParts.push(`Active in ${events.join(', ')} – demonstrates strong community engagement and thought leadership.`);
   } else {
-    fitParts.push('Limited community engagement signals.');
+    fitParts.push('Limited community engagement signals – they may not be leveraging external events effectively.');
   }
-  parts.push(`Fit score (${p.fitScore}/100): ${fitParts.join(' ')}`);
+  parts.push(`**Fit Score (${p.fitScore}/100)**: ${fitParts.join(' ')}`);
 
-  // Intent explanation
+  // ---- INTENT explanation ----
   const intentParts: string[] = [];
   const websiteIssues = [];
   if (p.outdatedWebsite) websiteIssues.push('outdated website');
   if (p.noVideoContent) websiteIssues.push('no video content');
   if (p.noPodcast) websiteIssues.push('no podcast');
-  if (p.noLeadCapture) websiteIssues.push('no lead capture');
-  if (p.weakSeo) websiteIssues.push('weak SEO');
+  if (p.noLeadCapture) websiteIssues.push('no lead capture forms');
+  if (p.weakSeo) websiteIssues.push('weak SEO performance');
   if (p.inactiveBlog) websiteIssues.push('inactive blog');
   if (p.weakLinkedIn) websiteIssues.push('weak LinkedIn presence');
   if (p.noCaseStudies) websiteIssues.push('no case studies');
   if (websiteIssues.length > 0) {
-    intentParts.push(`Website signals: ${websiteIssues.join(', ')} – indicates need for marketing improvement.`);
+    intentParts.push(`Website signals: ${websiteIssues.join(', ')} – these indicate a need for marketing and digital presence improvement.`);
   } else {
-    intentParts.push('Website is well-maintained with strong digital presence.');
+    intentParts.push('Website is well-maintained with strong digital presence – a positive intent signal.');
   }
 
   const hiring = [];
-  if (p.hiringDemandGen) hiring.push('demand gen');
-  if (p.hiringMktgManager) hiring.push('marketing manager');
-  if (p.hiringGrowthMktg) hiring.push('growth marketing');
-  if (p.hiringSalesDev) hiring.push('sales development');
-  if (p.hiringBizDev) hiring.push('business development');
+  if (p.hiringDemandGen) hiring.push('Demand Gen');
+  if (p.hiringMktgManager) hiring.push('Marketing Manager');
+  if (p.hiringGrowthMktg) hiring.push('Growth Marketing');
+  if (p.hiringSalesDev) hiring.push('Sales Development');
+  if (p.hiringBizDev) hiring.push('Business Development');
   if (hiring.length > 0) {
-    intentParts.push(`Hiring for ${hiring.join(', ')} – shows growth investment.`);
+    intentParts.push(`Hiring for ${hiring.join(', ')} – shows active investment in sales and marketing growth.`);
   } else {
-    intentParts.push('No active hiring signals detected.');
+    intentParts.push('No active hiring signals for marketing/sales roles – they might be scaling down or relying on existing teams.');
   }
 
   const business = [];
@@ -383,21 +378,21 @@ function generateSummary(p: Prospect): string {
   if (p.rebrand) business.push('rebrand');
   if (p.newExecutive) business.push('new executive hire');
   if (business.length > 0) {
-    intentParts.push(`Business events: ${business.join(', ')} – momentum and potential need for external services.`);
+    intentParts.push(`Business events: ${business.join(', ')} – these create momentum and a potential need for external services.`);
   } else {
-    intentParts.push('No major business events recently.');
+    intentParts.push('No major business events detected recently – they might be in a steady state.');
   }
 
-  parts.push(`Intent score (${p.intentScore}/100): ${intentParts.join(' ')}`);
+  parts.push(`**Intent Score (${p.intentScore}/100)**: ${intentParts.join(' ')}`);
 
-  // Final score
-  parts.push(`Final score (${p.finalScore}/100) is weighted 60% fit + 40% intent. Grade: ${p.grade}.`);
+  // ---- FINAL ----
+  parts.push(`**Final Score (${p.finalScore}/100)** is weighted 60% fit + 40% intent. This gives a Grade of ${p.grade}.`);
 
-  return parts.join(' ');
+  return parts.join('\n\n');
 }
 
 /**
- * Generates a list of simulated sources.
+ * Generates a list of mock sources.
  */
 function generateSources(p: Prospect): string[] {
   const sources: string[] = ['AI-powered web research (simulated)'];
@@ -418,7 +413,7 @@ function generateSources(p: Prospect): string[] {
 }
 
 /**
- * Generate plausible contact information.
+ * Generate plausible contact information (mock, but consistent per company).
  */
 function generateContactInfo(company: string, location: Location, rng: () => number) {
   // Email: clean company name -> domain
@@ -448,7 +443,7 @@ function generateContactInfo(company: string, location: Location, rng: () => num
 }
 
 /**
- * Generate a tailored email draft based on the prospect's attributes.
+ * Generates a highly tailored email draft based on the prospect's attributes.
  */
 function generateTailoredEmail(p: Prospect): string {
   const company = p.company;
@@ -458,10 +453,10 @@ function generateTailoredEmail(p: Prospect): string {
   const fitScore = p.fitScore;
   const intentScore = p.intentScore;
 
+  // Start building the email
   let body = `Subject: Strategic partnership opportunity for ${company}\n\n`;
   body += `Dear ${company} team,\n\n`;
-  body += `I hope this message finds you well. `;
-  body += `We at 434 Media have been following ${company}'s impressive growth in the ${industry} space. `;
+  body += `I hope this message finds you well. We at 434 Media have been following ${company}'s impressive growth in the ${industry} space. `;
   body += `Our analysis indicates that your company is a top-tier prospect (Grade ${grade}) with a strong fit (${fitScore}/100) and significant intent signals (${intentScore}/100).\n\n`;
 
   // Personalize based on signals
@@ -482,7 +477,13 @@ function generateTailoredEmail(p: Prospect): string {
     body += `We believe there is a strong synergy between our expertise and your current trajectory.\n\n`;
   }
 
-  body += `We would love to schedule a brief call to discuss how we can support your goals. `;
+  // Add a specific mention about location/community
+  if (p.hostsConferences || p.hostsMeetups || p.runsWebinars) {
+    body += `We also see that you are active in community events and webinars – we can help you amplify those efforts and reach a wider audience.\n\n`;
+  }
+
+  // Call to action
+  body += `We would love to schedule a brief 15‑minute call to discuss how we can support your goals. `;
   body += `Let me know a time that works for you.\n\n`;
   body += `Looking forward to connecting,\n\n`;
   body += `[Your Name]\n434 Media\n[Your Phone]\n[Your Email]`;
@@ -491,19 +492,20 @@ function generateTailoredEmail(p: Prospect): string {
 }
 
 /**
- * Simulates an AI‑powered research process.
+ * Creates a prospect from a company name (deterministic mock).
  * Returns a fully scored prospect with summary, sources, and contact details.
  */
 export function createProspectFromSearch(companyName: string): SearchedProspect {
   const seed = hashString(companyName);
   const rng = seededRng(seed);
 
+  // Randomly pick attributes based on the seed
   const industry = pick(INDUSTRIES, rng);
   const location = pick(LOCATIONS, rng);
   const fundingStage = pick(FUNDING_STAGES, rng);
   const employees = pick(EMPLOYEE_BANDS, rng);
   const nameLen = companyName.length;
-  const bias = nameLen % 5;
+  const bias = nameLen % 5; // bias for variety
 
   const base = {
     id: `PR-SEARCH-${Date.now()}-${seed}`,
@@ -555,7 +557,7 @@ export function createProspectFromSearch(companyName: string): SearchedProspect 
 
   const prospect: Prospect = { ...base, fitScore, intentScore, finalScore, grade, estimatedDealValue };
 
-  // Generate summary, sources, contact info, and tailored email
+  // Generate the rich extra fields
   const summary = generateSummary(prospect);
   const sources = generateSources(prospect);
   const { email, phone, addresses } = generateContactInfo(companyName, location, rng);
@@ -565,24 +567,19 @@ export function createProspectFromSearch(companyName: string): SearchedProspect 
 }
 
 /* ---- aggregation helpers (unchanged) ---- */
-
 export function kpis(prospects: Prospect[]) {
   const total = prospects.length;
-  const aPlus = prospects.filter((p) => p.grade === "A+");
-  const aGrade = prospects.filter((p) => p.grade === "A");
-  const bGrade = prospects.filter((p) => p.grade === "B");
-  const pipelineValue = [...aPlus, ...aGrade]
-    .reduce((sum, p) => sum + p.estimatedDealValue, 0);
-
+  const aPlus = prospects.filter(p => p.grade === "A+");
+  const aGrade = prospects.filter(p => p.grade === "A");
+  const bGrade = prospects.filter(p => p.grade === "B");
+  const pipelineValue = [...aPlus, ...aGrade].reduce((sum, p) => sum + p.estimatedDealValue, 0);
   return {
     total,
     aPlusCount: aPlus.length,
     aCount: aGrade.length,
     bCount: bGrade.length,
     pipelineValue,
-    avgFinalScore: total > 0
-      ? Math.round(prospects.reduce((s, p) => s + p.finalScore, 0) / total)
-      : 0,
+    avgFinalScore: total ? Math.round(prospects.reduce((s, p) => s + p.finalScore, 0) / total) : 0,
   };
 }
 
@@ -590,42 +587,25 @@ export function gradeCounts(prospects: Prospect[]) {
   const grades: Grade[] = ["A+", "A", "B", "C", "D"];
   const total = prospects.length;
   return grades.map((g) => {
-    const count = prospects.filter((p) => p.grade === g).length;
-    return { grade: g, count, pct: total > 0 ? (count / total) * 100 : 0 };
+    const count = prospects.filter(p => p.grade === g).length;
+    return { grade: g, count, pct: total ? (count / total) * 100 : 0 };
   });
 }
 
-export function scoreDistribution(
-  prospects: Prospect[],
-  binCount: number,
-  field: "finalScore" | "fitScore" | "intentScore" = "finalScore"
-): { from: number; to: number; count: number }[] {
+export function scoreDistribution(prospects: Prospect[], binCount: number, field: "finalScore" | "fitScore" | "intentScore" = "finalScore") {
   const step = 100 / binCount;
   return Array.from({ length: binCount }, (_, i) => {
     const from = Math.round(i * step);
     const to = Math.round((i + 1) * step);
-    return {
-      from,
-      to,
-      count: prospects.filter((p) => p[field] >= from && p[field] < to).length,
-    };
+    return { from, to, count: prospects.filter(p => p[field] >= from && p[field] < to).length };
   });
 }
 
 export function scatterPoints(prospects: Prospect[]) {
-  return prospects.map((p) => ({
-    x: p.intentScore,
-    y: p.fitScore,
-    grade: p.grade,
-    company: p.company,
-  }));
+  return prospects.map(p => ({ x: p.intentScore, y: p.fitScore, grade: p.grade, company: p.company }));
 }
 
-export function topProspects(
-  prospects: Prospect[],
-  count: number,
-  sortBy: "score" | "recent" | "deal"
-): Prospect[] {
+export function topProspects(prospects: Prospect[], count: number, sortBy: "score" | "recent" | "deal") {
   return [...prospects]
     .sort((a, b) => {
       if (sortBy === "score") return b.finalScore - a.finalScore;
@@ -635,16 +615,16 @@ export function topProspects(
     .slice(0, count);
 }
 
-export function ageInDays(date: Date): number {
+export function ageInDays(date: Date) {
   return Math.floor((Date.now() - date.getTime()) / 86_400_000);
 }
 
 export const GRADE_COLORS: Record<Grade, { bg: string; text: string; border: string }> = {
-  "A+": { bg: "bg-emerald-50",  text: "text-emerald-700", border: "border-emerald-200" },
-  "A":  { bg: "bg-teal-50",    text: "text-teal-700",    border: "border-teal-200" },
-  "B":  { bg: "bg-sky-50",     text: "text-sky-700",     border: "border-sky-200" },
-  "C":  { bg: "bg-amber-50",   text: "text-amber-700",   border: "border-amber-200" },
-  "D":  { bg: "bg-rose-50",    text: "text-rose-700",    border: "border-rose-200" },
+  "A+": { bg: "bg-emerald-50", text: "text-emerald-700", border: "border-emerald-200" },
+  "A":  { bg: "bg-teal-50",   text: "text-teal-700",   border: "border-teal-200" },
+  "B":  { bg: "bg-sky-50",    text: "text-sky-700",    border: "border-sky-200" },
+  "C":  { bg: "bg-amber-50",  text: "text-amber-700",  border: "border-amber-200" },
+  "D":  { bg: "bg-rose-50",   text: "text-rose-700",   border: "border-rose-200" },
 };
 
 export const INDUSTRY_COLORS: Partial<Record<Industry, string>> = {
