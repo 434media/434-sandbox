@@ -14,20 +14,39 @@ import {
   getAutomatedAction,
   GRADE_COLORS,
   INDUSTRY_COLORS,
+  generateContactInfo,
+  generateTailoredEmail,
+  seededRng,
   type Prospect,
   type Grade,
   type SearchedProspect,
 } from "./lib/pipeline";
 
-/* ---- Tabs ---- */
-type Tab = "overview" | "quality" | "prospects" | "search" | "automation";
+/* ---- Types ---- */
+type Tab = "overview" | "prospects" | "automation";
 const TABS: { id: Tab; label: string }[] = [
-  { id: "overview",   label: "Overview" },
-  { id: "quality",    label: "Fit × Intent" },
-  { id: "prospects",  label: "Prospects" },
-  { id: "search",     label: "Search & Add" },
+  { id: "overview", label: "Overview" },
+  { id: "prospects", label: "Prospects" },
   { id: "automation", label: "Automation" },
 ];
+
+/* ---- Custom hook for keyboard shortcuts ---- */
+function useHotkeys(keyMap: Record<string, () => void>) {
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      const key = e.key;
+      const ctrl = e.metaKey || e.ctrlKey;
+      if (ctrl && key === "k") {
+        e.preventDefault();
+        keyMap["cmd+k"]?.();
+      } else if (key === "Escape") {
+        keyMap["escape"]?.();
+      }
+    };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, [keyMap]);
+}
 
 /* ---- Shared UI components ---- */
 function Card({ children, className = "" }: { children: React.ReactNode; className?: string }) {
@@ -36,7 +55,7 @@ function Card({ children, className = "" }: { children: React.ReactNode; classNa
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
-      className={`rounded-xl border border-neutral-200 bg-white p-5 shadow-sm hover:shadow-md transition-shadow ${className}`}
+      className={`rounded-xl border border-neutral-200 bg-white p-5 shadow-sm hover:shadow-md transition-shadow dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100 ${className}`}
     >
       {children}
     </motion.div>
@@ -46,26 +65,57 @@ function Card({ children, className = "" }: { children: React.ReactNode; classNa
 function PanelHead({ title, sub }: { title: string; sub: string }) {
   return (
     <div className="mb-4">
-      <h2 className="text-base font-medium text-neutral-900">{title}</h2>
-      <p className="text-xs text-neutral-400">{sub}</p>
+      <h2 className="text-base font-medium text-neutral-900 dark:text-white">{title}</h2>
+      <p className="text-xs text-neutral-400 dark:text-neutral-400">{sub}</p>
     </div>
   );
 }
 
-function KpiCard({ label, value, accent = false, delay = 0 }: { label: string; value: string; accent?: boolean; delay?: number }) {
+/* ---- Sparkline (mini chart) ---- */
+function Sparkline({ data, color = "#1e3a5f" }: { data: number[]; color?: string }) {
+  const max = Math.max(...data, 1);
+  const min = Math.min(...data, 0);
+  const range = max - min || 1;
+  const points = data.map((v, i) => `${(i / (data.length - 1)) * 100},${100 - ((v - min) / range) * 100}`).join(" ");
+  return (
+    <svg viewBox="0 0 100 30" className="h-6 w-full">
+      <polyline points={points} fill="none" stroke={color} strokeWidth="1.5" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function KpiCard({ label, value, accent = false, delay = 0, trend, sparklineData, icon }: {
+  label: string; value: string; accent?: boolean; delay?: number;
+  trend?: { value: number; isPositive: boolean };
+  sparklineData?: number[];
+  icon?: React.ReactNode;
+}) {
+  const trendColor = trend ? (trend.isPositive ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400") : "";
   return (
     <motion.div
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
       transition={{ duration: 0.3, delay }}
-      className={`rounded-xl p-4 ${accent ? "bg-gradient-to-br from-[#1e3a5f] to-[#2a4a7f] text-white" : "bg-neutral-100 text-neutral-900"}`}
+      className={`rounded-xl p-4 ${accent ? "bg-gradient-to-br from-[#1e3a5f] to-[#2a4a7f] text-white" : "bg-neutral-100 dark:bg-neutral-700 text-neutral-900 dark:text-white"}`}
     >
-      <p className={`text-[13px] ${accent ? "text-blue-200" : "text-neutral-500"}`}>{label}</p>
-      <p className="mt-1 text-2xl font-medium tabular-nums">{value}</p>
+      <div className="flex items-start justify-between">
+        <p className={`text-[13px] ${accent ? "text-blue-200" : "text-neutral-500 dark:text-neutral-400"}`}>{label}</p>
+        {icon && <span className="text-lg">{icon}</span>}
+      </div>
+      <div className="mt-1 flex items-baseline gap-2">
+        <p className="text-2xl font-medium tabular-nums">{value}</p>
+        {trend && (
+          <span className={`text-xs font-medium ${trendColor}`}>
+            {trend.isPositive ? "↑" : "↓"} {Math.abs(trend.value)}%
+          </span>
+        )}
+      </div>
+      {sparklineData && <div className="mt-1"><Sparkline data={sparklineData} color={accent ? "#94b8e8" : "#1e3a5f"} /></div>}
     </motion.div>
   );
 }
 
+/* ---- GradePill & IndustryPill ---- */
 function GradePill({ grade }: { grade: Grade }) {
   const c = GRADE_COLORS[grade];
   return (
@@ -80,40 +130,108 @@ function IndustryPill({ industry }: { industry: string }) {
   return <span className={`inline-flex rounded-md px-2 py-0.5 text-[11px] ${cls}`}>{industry}</span>;
 }
 
-/* ---- Grade Panel ---- */
-const GRADE_BAR_COLOR: Record<Grade, string> = {
-  "A+": "bg-emerald-500",
-  "A":  "bg-teal-400",
-  "B":  "bg-sky-400",
-  "C":  "bg-amber-400",
-  "D":  "bg-rose-400",
-};
+/* ---- Morning Summary ---- */
+function MorningSummary({ k, onScan, isScanning }: { k: ReturnType<typeof kpis>; onScan: () => void; isScanning: boolean }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: -10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4 }}
+      className="mb-5 rounded-xl border border-emerald-200 bg-gradient-to-r from-emerald-50 to-teal-50 px-5 py-3.5 flex flex-wrap items-center justify-between gap-y-2 dark:border-emerald-800 dark:from-emerald-950 dark:to-teal-950 dark:text-emerald-100"
+    >
+      <div className="flex flex-wrap items-center gap-x-8 gap-y-2">
+        <div>
+          <p className="text-[11px] font-medium uppercase tracking-wide text-emerald-600 dark:text-emerald-300">Morning summary</p>
+          <p className="text-[13px] text-emerald-900 dark:text-emerald-200 mt-0.5">
+            {isScanning ? "⏳ Scanning for new prospects..." : `Nightly scan complete · ${k.total} companies evaluated`}
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-x-6 gap-y-1 text-[13px]">
+          <span className="text-emerald-800 dark:text-emerald-300"><strong>{k.aPlusCount}</strong> A+ prospects ready</span>
+          <span className="text-emerald-800 dark:text-emerald-300"><strong>{k.aCount}</strong> A prospects</span>
+          <span className="text-emerald-800 dark:text-emerald-300"><strong>{k.bCount}</strong> B prospects</span>
+          <span className="text-emerald-800 dark:text-emerald-300">Pipeline value <strong>${(k.pipelineValue / 1000).toFixed(0)}k</strong></span>
+        </div>
+      </div>
+      <button
+        onClick={onScan}
+        disabled={isScanning}
+        className={`rounded-md px-4 py-1.5 text-sm font-medium transition-all ${
+          isScanning
+            ? "bg-emerald-200 text-emerald-700 cursor-not-allowed"
+            : "bg-emerald-600 text-white hover:bg-emerald-700 active:scale-95"
+        }`}
+      >
+        {isScanning ? (
+          <span className="flex items-center gap-2">
+            <span className="animate-spin h-3 w-3 border-2 border-emerald-700 border-t-transparent rounded-full" />
+            Scanning...
+          </span>
+        ) : (
+          "🔄 Scan now"
+        )}
+      </button>
+    </motion.div>
+  );
+}
 
+/* ---- Grade Panel (donut chart) ---- */
 function GradePanel({ prospects }: { prospects: Prospect[] }) {
   const rows = useMemo(() => gradeCounts(prospects), [prospects]);
-  const max = Math.max(...rows.map(r => r.count), 1);
+  const total = rows.reduce((sum, r) => sum + r.count, 0);
+  const colors = ["#10b981", "#14b8a6", "#38bdf8", "#fbbf24", "#f87171"];
+
+  const radius = 60;
+  const circumference = 2 * Math.PI * radius;
+  let currentAngle = 0;
+
   return (
     <Card>
       <PanelHead title="Grade distribution" sub="Final score A+ → D breakdown" />
-      <div className="space-y-3">
-        {rows.map((r, idx) => (
-          <motion.div key={r.grade} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.3, delay: idx * 0.05 }} className="flex items-center gap-3">
-            <span className="w-6 text-right text-[13px] font-semibold text-neutral-700">{r.grade}</span>
-            <div className="relative flex-1 h-7 rounded-md bg-neutral-100">
-              <motion.div className={`h-full rounded-md transition-all ${GRADE_BAR_COLOR[r.grade as Grade]}`} initial={{ width: 0 }} animate={{ width: `${Math.max((r.count / max) * 100, 4)}%` }} transition={{ duration: 0.6, delay: idx * 0.05 }} />
-              <span className="absolute inset-0 flex items-center px-2.5 text-[12px] font-medium text-neutral-800">
-                {r.count.toLocaleString()} &nbsp;<span className="font-normal text-neutral-400">({r.pct.toFixed(0)}%)</span>
-              </span>
+      <div className="flex flex-col items-center sm:flex-row sm:items-start gap-6">
+        <svg viewBox="0 0 160 160" className="h-40 w-40">
+          {rows.map((r, idx) => {
+            const percent = total ? r.count / total : 0;
+            const dash = percent * circumference;
+            const offset = circumference - dash;
+            const angle = currentAngle;
+            currentAngle += percent * 360;
+            return (
+              <circle
+                key={r.grade}
+                cx="80"
+                cy="80"
+                r={radius}
+                fill="transparent"
+                stroke={colors[idx % colors.length]}
+                strokeWidth="16"
+                strokeDasharray={`${dash} ${circumference - dash}`}
+                strokeDashoffset={offset}
+                transform={`rotate(-90 80 80)`}
+                className="transition-all duration-700"
+              />
+            );
+          })}
+          <text x="80" y="80" textAnchor="middle" dominantBaseline="central" className="text-sm font-bold fill-current dark:text-white">
+            {total}
+          </text>
+        </svg>
+        <div className="space-y-1.5">
+          {rows.map((r, idx) => (
+            <div key={r.grade} className="flex items-center gap-3 text-sm">
+              <span className="inline-block h-3 w-3 rounded-full" style={{ backgroundColor: colors[idx % colors.length] }} />
+              <span className="font-medium">{r.grade}</span>
+              <span className="text-neutral-500 dark:text-neutral-400">{r.count} ({r.pct.toFixed(0)}%)</span>
             </div>
-          </motion.div>
-        ))}
+          ))}
+        </div>
       </div>
-      <div className="mt-5 rounded-lg bg-neutral-50 border border-neutral-100 p-3 space-y-1.5">
+      <div className="mt-5 rounded-lg bg-neutral-50 dark:bg-neutral-700 border border-neutral-100 dark:border-neutral-600 p-3 space-y-1.5">
         <p className="text-[11px] font-medium text-neutral-500 uppercase tracking-wide">Automated actions</p>
         {(["A+", "A", "B", "C"] as Grade[]).map((g) => (
           <div key={g} className="flex items-start gap-2 text-[12px]">
             <GradePill grade={g} />
-            <span className="text-neutral-600">{getAutomatedAction(g)}</span>
+            <span className="text-neutral-600 dark:text-neutral-300">{getAutomatedAction(g)}</span>
           </div>
         ))}
       </div>
@@ -125,31 +243,31 @@ function GradePanel({ prospects }: { prospects: Prospect[] }) {
 function ScoreHistogram({ prospects }: { prospects: Prospect[] }) {
   const [field, setField] = useState<"finalScore" | "fitScore" | "intentScore">("finalScore");
   const bins = useMemo(() => scoreDistribution(prospects, 10, field), [prospects, field]);
-  const max = Math.max(...bins.map(b => b.count), 1);
+  const max = Math.max(...bins.map((b) => b.count), 1);
   const labels = { finalScore: "Final score distribution", fitScore: "Fit score distribution", intentScore: "Intent score distribution" };
   return (
     <div>
       <div className="mb-2 flex items-center justify-between">
-        <p className="text-[11px] text-neutral-400">{labels[field]}</p>
+        <p className="text-[11px] text-neutral-400 dark:text-neutral-400">{labels[field]}</p>
         <div className="flex gap-1">
           {(["finalScore", "fitScore", "intentScore"] as const).map((f) => (
-            <button key={f} onClick={() => setField(f)} className={`rounded px-2 py-0.5 text-[11px] transition-colors ${field === f ? "bg-neutral-800 text-white" : "text-neutral-400 hover:bg-neutral-100"}`}>
+            <button key={f} onClick={() => setField(f)} className={`rounded px-2 py-0.5 text-[11px] transition-colors ${field === f ? "bg-neutral-800 text-white" : "text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-700"}`}>
               {f === "finalScore" ? "Final" : f === "fitScore" ? "Fit" : "Intent"}
             </button>
           ))}
         </div>
       </div>
       <div className="flex h-20 items-end gap-1">
-        {bins.map((b, idx) => (
-          <motion.div key={b.from} className="flex-1 rounded-sm bg-neutral-200 hover:bg-indigo-300 transition-colors cursor-pointer" initial={{ height: 0 }} animate={{ height: `${(b.count / max) * 100}%` }} transition={{ duration: 0.4, delay: idx * 0.02 }} title={`${b.from}–${b.to}: ${b.count} prospects`} />
+        {bins.map((b, idx: number) => (
+          <motion.div key={b.from} className="flex-1 rounded-sm bg-neutral-200 dark:bg-neutral-600 hover:bg-indigo-300 dark:hover:bg-indigo-500 transition-colors cursor-pointer" initial={{ height: 0 }} animate={{ height: `${(b.count / max) * 100}%` }} transition={{ duration: 0.4, delay: idx * 0.02 }} title={`${b.from}–${b.to}: ${b.count} prospects`} />
         ))}
       </div>
-      <div className="mt-1 flex justify-between text-[11px] text-neutral-400"><span>0</span><span>50</span><span>100</span></div>
+      <div className="mt-1 flex justify-between text-[11px] text-neutral-400 dark:text-neutral-400"><span>0</span><span>50</span><span>100</span></div>
     </div>
   );
 }
 
-/* ---- Scatter with fully fixed animations ---- */
+/* ---- Scatter with sized dots ---- */
 const SCATTER_GRADE_COLOR: Record<Grade, string> = { "A+": "#10b981", "A": "#14b8a6", "B": "#38bdf8", "C": "#fbbf24", "D": "#f87171" };
 
 function Scatter({ prospects }: { prospects: Prospect[] }) {
@@ -159,7 +277,6 @@ function Scatter({ prospects }: { prospects: Prospect[] }) {
   const py = (v: number) => B - (v / 100) * (B - T);
   const TX = px(55), TY = py(60);
 
-  // ✅ Fully typed with `as const` to satisfy TypeScript
   const dotVariants = {
     idle: (i: number) => ({
       y: 0,
@@ -176,23 +293,21 @@ function Scatter({ prospects }: { prospects: Prospect[] }) {
     tap: { scale: 0.8, transition: { duration: 0.1 } },
   };
 
-  const handleDotClick = (company: string, grade: Grade, fit: number, intent: number) => {
-    alert(`${company}\nGrade: ${grade}\nFit: ${fit}\nIntent: ${intent}\n\nClick "Search & Add" to add this prospect.`);
-  };
-
   return (
     <div>
-      <p className="mb-2 text-[11px] text-neutral-400">Fit × Intent — top-right quadrant = highest priority prospects. <strong>Click any dot</strong> for details.</p>
-      <svg viewBox={`0 0 ${W} ${H}`} className="w-full" role="img" aria-label="Scatter of prospects by Fit and Intent score">
+      <p className="mb-2 text-[11px] text-neutral-400 dark:text-neutral-400">Fit × Intent — dot size = deal value. <strong>Hover</strong> for details.</p>
+      <svg viewBox={`0 0 ${W} ${H}`} className="w-full" role="img">
         <rect x={TX} y={T} width={R - TX} height={TY - T} fill="#f0fdf4" rx={3} />
         <text x={(TX + R) / 2} y={T + 14} textAnchor="middle" fontSize="10" fill="#059669">Prioritize</text>
         <line x1={L} y1={T} x2={L} y2={B} stroke="#d4d4d4" />
         <line x1={L} y1={B} x2={R} y2={B} stroke="#d4d4d4" />
         <line x1={TX} y1={T} x2={TX} y2={B} stroke="#e5e5e5" strokeDasharray="3 3" />
         <line x1={L} y1={TY} x2={R} y2={TY} stroke="#e5e5e5" strokeDasharray="3 3" />
-        {pts.map((p, i) => {
+        {pts.map((p, i: number) => {
           const cx = px(p.x), cy = py(p.y);
-          const r = p.grade === "A+" ? 4.5 : p.grade === "A" ? 3.8 : 3;
+          const baseR = p.grade === "A+" ? 4.5 : p.grade === "A" ? 3.8 : 3;
+          const dealScale = 0.5 + (p.x / 100) * 1.5;
+          const r = Math.max(3, baseR * dealScale);
           return (
             <motion.circle
               key={i}
@@ -209,10 +324,8 @@ function Scatter({ prospects }: { prospects: Prospect[] }) {
               variants={dotVariants}
               whileHover="hover"
               whileTap="tap"
-              onClick={() => handleDotClick(p.company, p.grade, p.y, p.x)}
             >
-              {/* use <title> for tooltip instead of `title` attribute */}
-              <title>{`${p.company} · Fit ${p.y} / Intent ${p.x} · ${p.grade}`}</title>
+              <title>{`${p.company} · Grade ${p.grade} · Fit ${p.y} · Intent ${p.x} · Deal $${p.x * 1000}`}</title>
             </motion.circle>
           );
         })}
@@ -221,7 +334,7 @@ function Scatter({ prospects }: { prospects: Prospect[] }) {
       </svg>
       <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1">
         {(["A+", "A", "B", "C", "D"] as Grade[]).map((g) => (
-          <span key={g} className="flex items-center gap-1 text-[11px] text-neutral-500">
+          <span key={g} className="flex items-center gap-1 text-[11px] text-neutral-500 dark:text-neutral-400">
             <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ backgroundColor: SCATTER_GRADE_COLOR[g] }} />
             {g}
           </span>
@@ -241,54 +354,172 @@ function QualityPanel({ prospects }: { prospects: Prospect[] }) {
   );
 }
 
-/* ---- Top Prospects table ---- */
-function TopProspects({ prospects, onDeleteProspect }: { prospects: Prospect[]; onDeleteProspect: (id: string) => void }) {
+/* ---- Top Prospects with filters, progress bars, row highlights ---- */
+function TopProspects({
+  prospects,
+  onSelectProspect,
+}: {
+  prospects: Prospect[];
+  onSelectProspect: (prospect: Prospect) => void;
+}) {
   const [sortBy, setSortBy] = useState<"score" | "recent" | "deal">("score");
-  const rows = useMemo(() => topProspects(prospects, 20, sortBy), [prospects, sortBy]);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filterIndustry, setFilterIndustry] = useState<string>("all");
+  const [filterLocation, setFilterLocation] = useState<string>("all");
+  const [filterGrade, setFilterGrade] = useState<string>("all");
+
+  const industries = useMemo(() => Array.from(new Set(prospects.map(p => p.industry))), [prospects]);
+  const locations = useMemo(() => Array.from(new Set(prospects.map(p => p.location))), [prospects]);
+  const grades: Grade[] = ["A+", "A", "B", "C", "D"];
+
+  const filtered = useMemo(() => {
+    return prospects.filter(p => {
+      const matchSearch = p.company.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchIndustry = filterIndustry === "all" || p.industry === filterIndustry;
+      const matchLocation = filterLocation === "all" || p.location === filterLocation;
+      const matchGrade = filterGrade === "all" || p.grade === filterGrade;
+      return matchSearch && matchIndustry && matchLocation && matchGrade;
+    });
+  }, [prospects, searchQuery, filterIndustry, filterLocation, filterGrade]);
+
+  const rows = useMemo(() => topProspects(filtered, 20, sortBy), [filtered, sortBy]);
   const sortLabels = { score: "By score", recent: "By recency", deal: "By deal size" };
+
+  const getRowBg = (grade: Grade) => {
+    switch (grade) {
+      case "A+": return "bg-emerald-50 dark:bg-emerald-950/30";
+      case "A": return "bg-teal-50 dark:bg-teal-950/20";
+      case "B": return "bg-sky-50 dark:bg-sky-950/20";
+      case "C": return "bg-amber-50 dark:bg-amber-950/20";
+      default: return "";
+    }
+  };
+
   return (
     <Card>
       <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
-        <div><h2 className="text-base font-medium text-neutral-900">Top prospects</h2><p className="text-xs text-neutral-400">Highest priority targets</p></div>
+        <div>
+          <h2 className="text-base font-medium text-neutral-900 dark:text-white">Top Prospects</h2>
+          <p className="text-xs text-neutral-400">Click any row for full details</p>
+        </div>
         <div className="flex gap-1 text-xs">
           {(["score", "recent", "deal"] as const).map((s) => (
-            <button key={s} onClick={() => setSortBy(s)} className={`rounded-md border px-2.5 py-1 transition-colors ${sortBy === s ? "border-[#1e3a5f] bg-[#1e3a5f] text-white" : "border-neutral-200 text-neutral-500 hover:bg-neutral-50"}`}>
+            <button
+              key={s}
+              onClick={() => setSortBy(s)}
+              className={`rounded-md border px-2.5 py-1 transition-colors ${
+                sortBy === s
+                  ? "border-[#1e3a5f] bg-[#1e3a5f] text-white"
+                  : "border-neutral-200 dark:border-neutral-700 text-neutral-500 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-700"
+              }`}
+            >
               {sortLabels[s]}
             </button>
           ))}
         </div>
       </div>
+
+      {/* Filters */}
+      <div className="mb-4 flex flex-wrap gap-3 items-center">
+        <input
+          type="text"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          placeholder="Search companies..."
+          className="rounded-md border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-700 px-3 py-1.5 text-sm text-neutral-900 dark:text-white focus:border-[#1e3a5f] focus:outline-none focus:ring-1 focus:ring-[#1e3a5f]"
+        />
+        <select
+          value={filterIndustry}
+          onChange={(e) => setFilterIndustry(e.target.value)}
+          className="rounded-md border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-700 px-2 py-1.5 text-sm text-neutral-900 dark:text-white"
+        >
+          <option value="all">All industries</option>
+          {industries.map(ind => <option key={ind} value={ind}>{ind}</option>)}
+        </select>
+        <select
+          value={filterLocation}
+          onChange={(e) => setFilterLocation(e.target.value)}
+          className="rounded-md border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-700 px-2 py-1.5 text-sm text-neutral-900 dark:text-white"
+        >
+          <option value="all">All locations</option>
+          {locations.map(loc => <option key={loc} value={loc}>{loc}</option>)}
+        </select>
+        <select
+          value={filterGrade}
+          onChange={(e) => setFilterGrade(e.target.value)}
+          className="rounded-md border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-700 px-2 py-1.5 text-sm text-neutral-900 dark:text-white"
+        >
+          <option value="all">All grades</option>
+          {grades.map(g => <option key={g} value={g}>{g}</option>)}
+        </select>
+        <span className="text-xs text-neutral-400 dark:text-neutral-400">{filtered.length} prospects</span>
+      </div>
+
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-neutral-100 text-left text-[11px] uppercase tracking-wide text-neutral-400">
-              <th className="pb-2 pr-4 font-medium">Company</th><th className="pb-2 pr-4 font-medium">Industry</th><th className="pb-2 pr-4 font-medium">Location</th>
-              <th className="pb-2 pr-4 font-medium text-right">Fit</th><th className="pb-2 pr-4 font-medium text-right">Intent</th><th className="pb-2 pr-4 font-medium text-right">Final</th>
-              <th className="pb-2 pr-4 font-medium">Grade</th><th className="pb-2 pr-4 font-medium text-right">Est. Deal</th><th className="pb-2 font-medium text-center">Action</th>
+            <tr className="border-b border-neutral-100 dark:border-neutral-700 text-left text-[11px] uppercase tracking-wide text-neutral-400">
+              <th className="pb-2 pr-4 font-medium">Company</th>
+              <th className="pb-2 pr-4 font-medium">Industry</th>
+              <th className="pb-2 pr-4 font-medium">Location</th>
+              <th className="pb-2 pr-4 font-medium text-right">Fit</th>
+              <th className="pb-2 pr-4 font-medium text-right">Intent</th>
+              <th className="pb-2 pr-4 font-medium text-right">Final</th>
+              <th className="pb-2 pr-4 font-medium">Grade</th>
+              <th className="pb-2 pr-4 font-medium text-right">Est. Deal</th>
+              <th className="pb-2 font-medium text-center">Action</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-neutral-50">
-            <AnimatePresence>
-              {rows.map((p) => (
-                <motion.tr key={p.id} initial={{ opacity: 1 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.2 }} className="hover:bg-neutral-50 transition-colors">
-                  <td className="py-2.5 pr-4"><p className="font-medium text-neutral-900">{p.company}</p><p className="text-[11px] text-neutral-400">{ageInDays(p.discoveredAt)}d ago · {p.fundingStage}</p></td>
-                  <td className="py-2.5 pr-4"><IndustryPill industry={p.industry} /></td>
-                  <td className="py-2.5 pr-4 text-[13px] text-neutral-600 whitespace-nowrap">{p.location}</td>
-                  <td className="py-2.5 pr-4 text-right tabular-nums text-[13px] text-neutral-600">{p.fitScore}</td>
-                  <td className="py-2.5 pr-4 text-right tabular-nums text-[13px] text-neutral-600">{p.intentScore}</td>
-                  <td className="py-2.5 pr-4 text-right tabular-nums text-[13px] font-medium text-neutral-900">{p.finalScore}</td>
-                  <td className="py-2.5 pr-4"><GradePill grade={p.grade} /></td>
-                  <td className="py-2.5 pr-4 text-right tabular-nums text-[13px] text-neutral-600 whitespace-nowrap">${(p.estimatedDealValue / 1000).toFixed(0)}k</td>
-                  <td className="py-2.5 text-center">
-                    <button onClick={() => onDeleteProspect(p.id)} className="text-rose-400 hover:text-rose-600 transition-colors p-1 rounded hover:bg-rose-50" title="Delete prospect">
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                      </svg>
-                    </button>
-                  </td>
-                </motion.tr>
-              ))}
-            </AnimatePresence>
+          <tbody className="divide-y divide-neutral-50 dark:divide-neutral-700">
+            {rows.map((p: Prospect) => (
+              <tr
+                key={p.id}
+                onClick={() => onSelectProspect(p)}
+                className={`cursor-pointer hover:opacity-80 transition-opacity ${getRowBg(p.grade)}`}
+              >
+                <td className="py-2.5 pr-4">
+                  <p className="font-medium text-neutral-900 dark:text-white">{p.company}</p>
+                  <p className="text-[11px] text-neutral-400">
+                    {ageInDays(p.discoveredAt)}d ago · {p.fundingStage}
+                  </p>
+                </td>
+                <td className="py-2.5 pr-4"><IndustryPill industry={p.industry} /></td>
+                <td className="py-2.5 pr-4 text-[13px] text-neutral-600 dark:text-neutral-300 whitespace-nowrap">
+                  {p.location}
+                </td>
+                <td className="py-2.5 pr-4 text-right">
+                  <div className="flex items-center justify-end gap-1">
+                    <span className="text-[13px] tabular-nums text-neutral-600 dark:text-neutral-300">{p.fitScore}</span>
+                    <div className="w-12 h-1.5 bg-neutral-200 dark:bg-neutral-600 rounded-full overflow-hidden">
+                      <div className="h-full bg-[#1e3a5f] rounded-full" style={{ width: `${p.fitScore}%` }} />
+                    </div>
+                  </div>
+                </td>
+                <td className="py-2.5 pr-4 text-right">
+                  <div className="flex items-center justify-end gap-1">
+                    <span className="text-[13px] tabular-nums text-neutral-600 dark:text-neutral-300">{p.intentScore}</span>
+                    <div className="w-12 h-1.5 bg-neutral-200 dark:bg-neutral-600 rounded-full overflow-hidden">
+                      <div className="h-full bg-[#1e3a5f] rounded-full" style={{ width: `${p.intentScore}%` }} />
+                    </div>
+                  </div>
+                </td>
+                <td className="py-2.5 pr-4 text-right tabular-nums text-[13px] font-medium text-neutral-900 dark:text-white">
+                  {p.finalScore}
+                </td>
+                <td className="py-2.5 pr-4"><GradePill grade={p.grade} /></td>
+                <td className="py-2.5 pr-4 text-right tabular-nums text-[13px] text-neutral-600 dark:text-neutral-300 whitespace-nowrap">
+                  ${(p.estimatedDealValue / 1000).toFixed(0)}k
+                </td>
+                <td className="py-2.5 text-center">
+                  <button
+                    onClick={(e) => { e.stopPropagation(); alert(`Quick email for ${p.company}`); }}
+                    className="rounded bg-[#1e3a5f] px-2 py-0.5 text-xs text-white hover:bg-[#16304f] transition-colors"
+                  >
+                    ✉️
+                  </button>
+                </td>
+              </tr>
+            ))}
           </tbody>
         </table>
       </div>
@@ -296,26 +527,195 @@ function TopProspects({ prospects, onDeleteProspect }: { prospects: Prospect[]; 
   );
 }
 
-/* ---- Morning Summary with Scan button ---- */
-function MorningSummary({ k, onScan, isScanning }: { k: ReturnType<typeof kpis>; onScan: () => void; isScanning: boolean }) {
+/* ---- Email Campaigns ---- */
+function EmailCampaigns() {
+  const stats = {
+    sent: 142,
+    opened: 89,
+    replied: 34,
+    conversionRate: 12.5,
+  };
+  const trendData = [10, 15, 12, 20, 18, 25, 22];
+
+  const handleStatClick = (label: string) => {
+    alert(`Detailed view for ${label} coming soon.`);
+  };
+
   return (
-    <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }} className="mb-5 rounded-xl border border-emerald-200 bg-gradient-to-r from-emerald-50 to-teal-50 px-5 py-3.5 flex flex-wrap items-center justify-between gap-y-2">
-      <div className="flex flex-wrap items-center gap-x-8 gap-y-2">
+    <Card>
+      <div className="flex items-start justify-between">
         <div>
-          <p className="text-[11px] font-medium uppercase tracking-wide text-emerald-600">Morning summary</p>
-          <p className="text-[13px] text-emerald-900 mt-0.5">{isScanning ? "⏳ Scanning for new prospects..." : `Nightly scan complete · ${k.total} companies evaluated`}</p>
+          <h2 className="text-base font-medium text-neutral-900 dark:text-white">Email Campaigns</h2>
+          <p className="text-xs text-neutral-400">Last 30 days</p>
         </div>
-        <div className="flex flex-wrap gap-x-6 gap-y-1 text-[13px]">
-          <span className="text-emerald-800"><strong>{k.aPlusCount}</strong> A+ prospects ready</span>
-          <span className="text-emerald-800"><strong>{k.aCount}</strong> A prospects</span>
-          <span className="text-emerald-800"><strong>{k.bCount}</strong> B prospects</span>
-          <span className="text-emerald-800">Pipeline value <strong>${(k.pipelineValue / 1000).toFixed(0)}k</strong></span>
+        <span className="rounded-full bg-emerald-100 dark:bg-emerald-900 px-2.5 py-0.5 text-xs font-medium text-emerald-700 dark:text-emerald-300">
+          +{Math.round(Math.random() * 20)}% vs last month
+        </span>
+      </div>
+      <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <div onClick={() => handleStatClick("Sent")} className="rounded-lg bg-neutral-50 dark:bg-neutral-700 p-3 text-center cursor-pointer hover:bg-neutral-100 dark:hover:bg-neutral-600 transition-colors">
+          <p className="text-2xl font-semibold text-neutral-800 dark:text-white">{stats.sent}</p>
+          <p className="text-[11px] text-neutral-500">Emails sent</p>
+        </div>
+        <div onClick={() => handleStatClick("Opened")} className="rounded-lg bg-neutral-50 dark:bg-neutral-700 p-3 text-center cursor-pointer hover:bg-neutral-100 dark:hover:bg-neutral-600 transition-colors">
+          <p className="text-2xl font-semibold text-neutral-800 dark:text-white">{stats.opened}</p>
+          <p className="text-[11px] text-neutral-500">Opened</p>
+        </div>
+        <div onClick={() => handleStatClick("Replies")} className="rounded-lg bg-neutral-50 dark:bg-neutral-700 p-3 text-center cursor-pointer hover:bg-neutral-100 dark:hover:bg-neutral-600 transition-colors">
+          <p className="text-2xl font-semibold text-neutral-800 dark:text-white">{stats.replied}</p>
+          <p className="text-[11px] text-neutral-500">Replies</p>
+        </div>
+        <div onClick={() => handleStatClick("Conversion")} className="rounded-lg bg-neutral-50 dark:bg-neutral-700 p-3 text-center cursor-pointer hover:bg-neutral-100 dark:hover:bg-neutral-600 transition-colors">
+          <p className="text-2xl font-semibold text-neutral-800 dark:text-white">{stats.conversionRate}%</p>
+          <p className="text-[11px] text-neutral-500">Conversion rate</p>
         </div>
       </div>
-      <button onClick={onScan} disabled={isScanning} className={`rounded-md px-4 py-1.5 text-sm font-medium transition-all ${isScanning ? "bg-emerald-200 text-emerald-700 cursor-not-allowed" : "bg-emerald-600 text-white hover:bg-emerald-700 active:scale-95"}`}>
-        {isScanning ? <span className="flex items-center gap-2"><span className="animate-spin h-3 w-3 border-2 border-emerald-700 border-t-transparent rounded-full" /> Scanning...</span> : "🔄 Scan now"}
-      </button>
-    </motion.div>
+      <div className="mt-3">
+        <p className="text-[10px] text-neutral-400 mb-1">Weekly opens trend</p>
+        <Sparkline data={trendData} color="#1e3a5f" />
+      </div>
+    </Card>
+  );
+}
+
+/* ---- Prospect Detail Modal ---- */
+function ProspectDetailModal({
+  prospect,
+  isOpen,
+  onClose,
+}: {
+  prospect: Prospect | null;
+  isOpen: boolean;
+  onClose: () => void;
+}) {
+  const [notes, setNotes] = useState("");
+  if (!prospect) return null;
+
+  const getContactInfo = (p: Prospect) => {
+    const seed = p.id.length + p.company.length;
+    const rng = seededRng(seed);
+    return generateContactInfo(p.company, p.location, rng);
+  };
+
+  const contact = getContactInfo(prospect);
+  const tailoredEmail = generateTailoredEmail(prospect);
+  const timeline = [
+    { date: "2 days ago", event: "Email sent" },
+    { date: "5 days ago", event: "LinkedIn connection request" },
+    { date: "1 week ago", event: "Prospect added" },
+  ];
+
+  return (
+    <AnimatePresence>
+      {isOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.9 }}
+            transition={{ duration: 0.2 }}
+            className="bg-white dark:bg-neutral-800 rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6 mx-4"
+          >
+            <div className="flex items-start justify-between mb-4">
+              <div>
+                <h2 className="text-xl font-semibold text-neutral-900 dark:text-white">{prospect.company}</h2>
+                <div className="mt-1 flex flex-wrap gap-2">
+                  <IndustryPill industry={prospect.industry} />
+                  <span className="text-sm text-neutral-500">{prospect.location}</span>
+                  <span className="text-sm text-neutral-500">{prospect.fundingStage}</span>
+                  <span className="text-sm text-neutral-500">{prospect.employees} employees</span>
+                </div>
+              </div>
+              <button onClick={onClose} className="text-neutral-400 hover:text-neutral-600 transition-colors">
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4 mb-4">
+              <div className="space-y-1">
+                <p className="text-sm text-neutral-500">Final Score</p>
+                <p className="text-2xl font-bold">{prospect.finalScore}</p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-sm text-neutral-500">Grade</p>
+                <GradePill grade={prospect.grade} />
+              </div>
+              <div className="space-y-1">
+                <p className="text-sm text-neutral-500">Fit / Intent</p>
+                <p className="text-lg font-medium">{prospect.fitScore} / {prospect.intentScore}</p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-sm text-neutral-500">Est. Deal Value</p>
+                <p className="text-lg font-medium">${(prospect.estimatedDealValue / 1000).toFixed(0)}k</p>
+              </div>
+            </div>
+
+            <div className="border-t border-neutral-200 dark:border-neutral-700 pt-3 mb-3">
+              <h4 className="text-sm font-medium text-neutral-700 dark:text-neutral-300">📞 Contact Information</h4>
+              <div className="mt-2 grid grid-cols-1 gap-2 text-sm text-neutral-600 dark:text-neutral-300 sm:grid-cols-2">
+                <div><span className="font-medium">Email:</span> <a href={`mailto:${contact.email}`} className="text-blue-600 hover:underline">{contact.email}</a></div>
+                <div><span className="font-medium">Phone:</span> <a href={`tel:${contact.phone}`} className="text-blue-600 hover:underline">{contact.phone}</a></div>
+              </div>
+              {contact.addresses.length > 0 && (
+                <div className="mt-2">
+                  <span className="font-medium">📍 Addresses:</span>
+                  <ul className="mt-1 list-disc pl-5 text-sm text-neutral-600 dark:text-neutral-300">
+                    {contact.addresses.map((addr: string, idx: number) => <li key={idx}>{addr}</li>)}
+                  </ul>
+                </div>
+              )}
+            </div>
+
+            <div className="border-t border-neutral-200 dark:border-neutral-700 pt-3 mb-3">
+              <h4 className="text-sm font-medium text-neutral-700 dark:text-neutral-300">📝 Notes</h4>
+              <textarea
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder="Add internal notes..."
+                className="mt-1 w-full rounded-md border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-700 p-2 text-sm text-neutral-900 dark:text-white focus:border-[#1e3a5f] focus:outline-none"
+                rows={2}
+              />
+            </div>
+
+            <div className="border-t border-neutral-200 dark:border-neutral-700 pt-3 mb-3">
+              <h4 className="text-sm font-medium text-neutral-700 dark:text-neutral-300">⏳ Timeline</h4>
+              <ul className="mt-1 space-y-1 text-sm text-neutral-600 dark:text-neutral-300">
+                {timeline.map((item, idx) => (
+                  <li key={idx} className="flex gap-2"><span className="text-neutral-400">{item.date}:</span> {item.event}</li>
+                ))}
+              </ul>
+            </div>
+
+            <div className="border-t border-neutral-200 dark:border-neutral-700 pt-3">
+              <details className="group">
+                <summary className="cursor-pointer text-sm font-medium text-neutral-700 dark:text-neutral-300 hover:text-neutral-900">
+                  ✉️ Tailored Email Draft
+                </summary>
+                <div className="mt-2 rounded-md bg-white dark:bg-neutral-700 p-3 text-sm font-mono whitespace-pre-wrap border border-neutral-200 dark:border-neutral-600 text-neutral-800 dark:text-neutral-200">
+                  {tailoredEmail}
+                </div>
+                <div className="mt-2 flex gap-2">
+                  <button
+                    onClick={() => navigator.clipboard?.writeText(tailoredEmail)}
+                    className="rounded-md border border-neutral-300 dark:border-neutral-600 px-3 py-1 text-xs text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-600 transition-colors"
+                  >
+                    Copy email
+                  </button>
+                  <a
+                    href={`mailto:${contact.email}?subject=Strategic%20partnership%20opportunity%20for%20${encodeURIComponent(prospect.company)}&body=${encodeURIComponent(tailoredEmail)}`}
+                    className="rounded-md bg-[#1e3a5f] px-3 py-1 text-xs text-white hover:bg-[#16304f] transition-colors"
+                  >
+                    Open in mail
+                  </a>
+                </div>
+              </details>
+            </div>
+          </motion.div>
+        </div>
+      )}
+    </AnimatePresence>
   );
 }
 
@@ -327,6 +727,7 @@ function SearchPanel({ onAddProspect }: { onAddProspect: (p: Prospect) => void }
   const [result, setResult] = useState<SearchedProspect | null>(null);
   const [isSearching, setIsSearching] = useState(false);
   const searchRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const getLocalSuggestions = (q: string) => {
     const lower = q.toLowerCase();
@@ -404,13 +805,14 @@ function SearchPanel({ onAddProspect }: { onAddProspect: (p: Prospect) => void }
           <div className="flex gap-2">
             <div className="relative flex-1">
               <input
+                ref={inputRef}
                 type="text"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 onFocus={() => query.length >= 2 && suggestions.length > 0 && setShowSuggestions(true)}
                 onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-                placeholder="Search for any company (e.g., Google, SpaceX, Stripe)..."
-                className="w-full rounded-md border border-neutral-300 px-4 py-2.5 text-sm focus:border-[#1e3a5f] focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]/20 transition-all"
+                placeholder="Search for any company (Cmd+K) ..."
+                className="w-full rounded-md border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-700 px-4 py-2.5 text-sm text-neutral-900 dark:text-white focus:border-[#1e3a5f] focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]/20 transition-all"
               />
             </div>
             <button
@@ -433,16 +835,16 @@ function SearchPanel({ onAddProspect }: { onAddProspect: (p: Prospect) => void }
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -5 }}
                 transition={{ duration: 0.15 }}
-                className="absolute z-50 mt-1 w-full max-h-60 overflow-y-auto rounded-lg border border-neutral-200 bg-white shadow-lg"
+                className="absolute z-50 mt-1 w-full max-h-60 overflow-y-auto rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 shadow-lg"
               >
-                {suggestions.map((company, idx) => (
+                {suggestions.map((company, idx: number) => (
                   <motion.li
                     key={company}
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     transition={{ delay: idx * 0.02 }}
                     onClick={() => handleSelectSuggestion(company)}
-                    className="px-4 py-2.5 text-sm text-neutral-700 hover:bg-[#1e3a5f]/5 cursor-pointer transition-colors border-b border-neutral-50 last:border-0"
+                    className="px-4 py-2.5 text-sm text-neutral-700 dark:text-neutral-300 hover:bg-[#1e3a5f]/5 cursor-pointer transition-colors border-b border-neutral-50 dark:border-neutral-700 last:border-0"
                   >
                     <div className="flex items-center gap-2">
                       <svg className="w-4 h-4 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -464,12 +866,12 @@ function SearchPanel({ onAddProspect }: { onAddProspect: (p: Prospect) => void }
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
               transition={{ duration: 0.3 }}
-              className="mt-2 rounded-lg border border-neutral-200 bg-neutral-50 p-4"
+              className="mt-2 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-700 p-4"
             >
               <div className="flex flex-col gap-4">
                 <div className="flex flex-wrap items-start justify-between gap-4">
                   <div>
-                    <h3 className="text-lg font-medium text-neutral-900">{result.company}</h3>
+                    <h3 className="text-lg font-medium text-neutral-900 dark:text-white">{result.company}</h3>
                     <div className="mt-1 flex flex-wrap gap-2">
                       <IndustryPill industry={result.industry} />
                       <span className="text-sm text-neutral-500">{result.location}</span>
@@ -489,49 +891,49 @@ function SearchPanel({ onAddProspect }: { onAddProspect: (p: Prospect) => void }
                   </button>
                 </div>
 
-                <div className="border-t border-neutral-200 pt-3">
-                  <h4 className="text-sm font-medium text-neutral-700">📞 Contact Information</h4>
-                  <div className="mt-2 grid grid-cols-1 gap-2 text-sm text-neutral-600 sm:grid-cols-2">
+                <div className="border-t border-neutral-200 dark:border-neutral-600 pt-3">
+                  <h4 className="text-sm font-medium text-neutral-700 dark:text-neutral-300">📞 Contact Information</h4>
+                  <div className="mt-2 grid grid-cols-1 gap-2 text-sm text-neutral-600 dark:text-neutral-300 sm:grid-cols-2">
                     <div><span className="font-medium">Email:</span> <a href={`mailto:${result.contactEmail}`} className="text-blue-600 hover:underline">{result.contactEmail}</a></div>
                     <div><span className="font-medium">Phone:</span> <a href={`tel:${result.contactPhone}`} className="text-blue-600 hover:underline">{result.contactPhone}</a></div>
                   </div>
                   {result.addresses.length > 0 && (
                     <div className="mt-2">
                       <span className="font-medium">📍 Addresses:</span>
-                      <ul className="mt-1 list-disc pl-5 text-sm text-neutral-600">
-                        {result.addresses.map((addr, idx) => <li key={idx}>{addr}</li>)}
+                      <ul className="mt-1 list-disc pl-5 text-sm text-neutral-600 dark:text-neutral-300">
+                        {result.addresses.map((addr: string, idx: number) => <li key={idx}>{addr}</li>)}
                       </ul>
                     </div>
                   )}
                 </div>
 
-                <div className="border-t border-neutral-200 pt-3">
+                <div className="border-t border-neutral-200 dark:border-neutral-600 pt-3">
                   <details className="group">
-                    <summary className="cursor-pointer text-sm font-medium text-neutral-700 hover:text-neutral-900">
+                    <summary className="cursor-pointer text-sm font-medium text-neutral-700 dark:text-neutral-300 hover:text-neutral-900">
                       📋 Why this score? (click to expand)
                     </summary>
-                    <div className="mt-2 space-y-2 text-sm text-neutral-700 whitespace-pre-wrap">
+                    <div className="mt-2 space-y-2 text-sm text-neutral-700 dark:text-neutral-300 whitespace-pre-wrap">
                       <p className="leading-relaxed">{result.summary}</p>
                       <div>
                         <p className="text-xs font-medium text-neutral-500">Sources:</p>
                         <ul className="mt-1 flex flex-wrap gap-1.5">
-                          {result.sources.map((src, idx) => <li key={idx} className="rounded-full bg-neutral-200 px-2.5 py-0.5 text-xs text-neutral-700">{src}</li>)}
+                          {result.sources.map((src: string, idx: number) => <li key={idx} className="rounded-full bg-neutral-200 dark:bg-neutral-600 px-2.5 py-0.5 text-xs text-neutral-700 dark:text-neutral-300">{src}</li>)}
                         </ul>
                       </div>
                     </div>
                   </details>
                 </div>
 
-                <div className="border-t border-neutral-200 pt-3">
+                <div className="border-t border-neutral-200 dark:border-neutral-600 pt-3">
                   <details className="group">
-                    <summary className="cursor-pointer text-sm font-medium text-neutral-700 hover:text-neutral-900">
+                    <summary className="cursor-pointer text-sm font-medium text-neutral-700 dark:text-neutral-300 hover:text-neutral-900">
                       ✉️ Tailored Email Draft (click to expand)
                     </summary>
-                    <div className="mt-2 rounded-md bg-white p-3 text-sm font-mono whitespace-pre-wrap border border-neutral-200 text-neutral-800">
+                    <div className="mt-2 rounded-md bg-white dark:bg-neutral-800 p-3 text-sm font-mono whitespace-pre-wrap border border-neutral-200 dark:border-neutral-600 text-neutral-800 dark:text-neutral-200">
                       {result.tailoredEmail}
                     </div>
                     <div className="mt-2 flex gap-2">
-                      <button onClick={() => navigator.clipboard?.writeText(result.tailoredEmail)} className="rounded-md border border-neutral-300 px-3 py-1 text-xs text-neutral-600 hover:bg-neutral-100 transition-colors">
+                      <button onClick={() => navigator.clipboard?.writeText(result.tailoredEmail)} className="rounded-md border border-neutral-300 dark:border-neutral-600 px-3 py-1 text-xs text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-600 transition-colors">
                         Copy email
                       </button>
                       <a href={`mailto:${result.contactEmail}?subject=Strategic%20partnership%20opportunity%20for%20${encodeURIComponent(result.company)}&body=${encodeURIComponent(result.tailoredEmail)}`} className="rounded-md bg-[#1e3a5f] px-3 py-1 text-xs text-white hover:bg-[#16304f] transition-colors">
@@ -566,10 +968,10 @@ function ActionPreviewModal({ isOpen, onClose, onConfirm, prospects, grade, acti
     <AnimatePresence>
       {isOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-          <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} transition={{ duration: 0.2 }} className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6 mx-4">
+          <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} transition={{ duration: 0.2 }} className="bg-white dark:bg-neutral-800 rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6 mx-4">
             <div className="flex items-start justify-between mb-4">
               <div>
-                <h2 className="text-xl font-semibold text-neutral-900">Confirm Action</h2>
+                <h2 className="text-xl font-semibold text-neutral-900 dark:text-white">Confirm Action</h2>
                 <p className="text-sm text-neutral-500">{prospects.length === 1 ? `Prospect: ${prospects[0].company} (Grade ${grade})` : `${prospects.length} prospects (Grade ${grade})`}</p>
               </div>
               <button onClick={onClose} className="text-neutral-400 hover:text-neutral-600 transition-colors">
@@ -577,22 +979,22 @@ function ActionPreviewModal({ isOpen, onClose, onConfirm, prospects, grade, acti
               </button>
             </div>
             <div className="space-y-4">
-              <div className="bg-neutral-50 rounded-lg p-4"><p className="text-sm font-medium text-neutral-700">Action: <span className="font-normal">{action}</span></p></div>
-              <div className="border border-neutral-200 rounded-lg divide-y divide-neutral-100">
-                <div className="p-3 flex items-start gap-3"><span className="text-sm font-medium text-neutral-700 w-20">📧 Email</span><span className="text-sm text-neutral-600">{details.email}</span></div>
-                <div className="p-3 flex items-start gap-3"><span className="text-sm font-medium text-neutral-700 w-20">🔗 LinkedIn</span><span className="text-sm text-neutral-600">{details.linkedin}</span></div>
-                <div className="p-3 flex items-start gap-3"><span className="text-sm font-medium text-neutral-700 w-20">📞 Call</span><span className="text-sm text-neutral-600">{details.call}</span></div>
-                <div className="p-3 flex items-start gap-3"><span className="text-sm font-medium text-neutral-700 w-20">📋 CRM</span><span className="text-sm text-neutral-600">{details.crm}</span></div>
+              <div className="bg-neutral-50 dark:bg-neutral-700 rounded-lg p-4"><p className="text-sm font-medium text-neutral-700 dark:text-neutral-300">Action: <span className="font-normal">{action}</span></p></div>
+              <div className="border border-neutral-200 dark:border-neutral-700 rounded-lg divide-y divide-neutral-100 dark:divide-neutral-700">
+                <div className="p-3 flex items-start gap-3"><span className="text-sm font-medium text-neutral-700 dark:text-neutral-300 w-20">📧 Email</span><span className="text-sm text-neutral-600 dark:text-neutral-400">{details.email}</span></div>
+                <div className="p-3 flex items-start gap-3"><span className="text-sm font-medium text-neutral-700 dark:text-neutral-300 w-20">🔗 LinkedIn</span><span className="text-sm text-neutral-600 dark:text-neutral-400">{details.linkedin}</span></div>
+                <div className="p-3 flex items-start gap-3"><span className="text-sm font-medium text-neutral-700 dark:text-neutral-300 w-20">📞 Call</span><span className="text-sm text-neutral-600 dark:text-neutral-400">{details.call}</span></div>
+                <div className="p-3 flex items-start gap-3"><span className="text-sm font-medium text-neutral-700 dark:text-neutral-300 w-20">📋 CRM</span><span className="text-sm text-neutral-600 dark:text-neutral-400">{details.crm}</span></div>
               </div>
               {prospects.length > 1 && (
-                <div className="border border-neutral-200 rounded-lg p-3">
+                <div className="border border-neutral-200 dark:border-neutral-700 rounded-lg p-3">
                   <p className="text-xs font-medium text-neutral-500 uppercase tracking-wider mb-2">Affected prospects</p>
                   <div className="max-h-32 overflow-y-auto space-y-1">
-                    {prospects.map(p => <div key={p.id} className="text-sm text-neutral-600 flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-neutral-300" />{p.company}</div>)}
+                    {prospects.map((p: Prospect) => <div key={p.id} className="text-sm text-neutral-600 dark:text-neutral-400 flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-neutral-300" />{p.company}</div>)}
                   </div>
                 </div>
               )}
-              <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs text-amber-800">⚠️ This action will send real outreach (emails, LinkedIn messages, etc.) and update your CRM. Please review the details above before confirming.</div>
+              <div className="bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-lg p-3 text-xs text-amber-800 dark:text-amber-300">⚠️ This action will send real outreach (emails, LinkedIn messages, etc.) and update your CRM. Please review the details above before confirming.</div>
             </div>
             <div className="mt-6 flex justify-end gap-3">
               <button onClick={onClose} className="px-4 py-2 text-sm font-medium text-neutral-600 hover:bg-neutral-100 rounded-md transition-colors">Cancel</button>
@@ -605,35 +1007,38 @@ function ActionPreviewModal({ isOpen, onClose, onConfirm, prospects, grade, acti
   );
 }
 
-/* ---- Automation Panel ---- */
+/* ---- Automation Panel with batch selection and log ---- */
 function AutomationPanel({ prospects }: { prospects: Prospect[] }) {
   const [executing, setExecuting] = useState<{ [key: string]: boolean }>({});
-  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info'; id: number } | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [modalProspects, setModalProspects] = useState<Prospect[]>([]);
   const [modalGrade, setModalGrade] = useState<Grade>("A+");
   const [modalAction, setModalAction] = useState("");
   const [modalOnConfirm, setModalOnConfirm] = useState<() => void>(() => () => {});
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [auditLog, setAuditLog] = useState<{ time: string; action: string; count: number }[]>([]);
 
   const showToast = (message: string, type: 'success' | 'error' | 'info' = 'info') => {
-    setToast({ message, type });
-    setTimeout(() => setToast(null), 3000);
+    const id = Date.now();
+    setToast({ message, type, id });
+    setTimeout(() => setToast(null), 5000);
   };
 
   const grouped = useMemo(() => {
     const groups: Record<Grade, Prospect[]> = { "A+": [], "A": [], "B": [], "C": [], "D": [] };
-    prospects.forEach(p => { if (groups[p.grade]) groups[p.grade].push(p); });
+    prospects.forEach((p: Prospect) => { if (groups[p.grade]) groups[p.grade].push(p); });
     return groups;
   }, [prospects]);
 
   const performExecute = async (prospectsToProcess: Prospect[], grade: Grade) => {
     const action = getAutomatedAction(grade);
     if (!action || action === "Store only") { showToast(`No action needed for grade ${grade}`, 'info'); return; }
-    const ids = prospectsToProcess.map(p => p.id);
+    const ids = prospectsToProcess.map((p: Prospect) => p.id);
     setExecuting(prev => { const newState = { ...prev }; ids.forEach(id => newState[id] = true); return newState; });
     try {
       await new Promise(resolve => setTimeout(resolve, 1500));
-      console.log(`Executed ${action} for ${prospectsToProcess.length} prospect(s) of grade ${grade}`);
+      setAuditLog(prev => [{ time: new Date().toLocaleTimeString(), action, count: prospectsToProcess.length }, ...prev]);
       showToast(`✅ ${prospectsToProcess.length} prospect(s) processed (${grade})`, 'success');
     } catch (error) {
       showToast(`❌ Failed to process ${grade} prospects`, 'error');
@@ -664,6 +1069,27 @@ function AutomationPanel({ prospects }: { prospects: Prospect[] }) {
     setModalOpen(true);
   };
 
+  const handleRunSelected = () => {
+    const selected = prospects.filter(p => selectedIds.has(p.id));
+    if (selected.length === 0) { showToast("No prospects selected", 'info'); return; }
+    const grade = selected[0].grade;
+    const action = getAutomatedAction(grade);
+    if (!action || action === "Store only") { showToast("Selected prospects don't have an actionable grade", 'info'); return; }
+    setModalProspects(selected);
+    setModalGrade(grade);
+    setModalAction(action);
+    setModalOnConfirm(() => () => { performExecute(selected, grade); setModalOpen(false); });
+    setModalOpen(true);
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === prospects.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(prospects.map(p => p.id)));
+    }
+  };
+
   const getActionDescription = (grade: Grade): string => {
     switch (grade) {
       case "A+": return "Email + LinkedIn + Call script · CRM record · Notify sales";
@@ -677,15 +1103,34 @@ function AutomationPanel({ prospects }: { prospects: Prospect[] }) {
     <>
       <Card>
         <PanelHead title="Automated Actions" sub="Execute predefined workflows based on prospect grade" />
-        {toast && <div className={`mb-4 p-3 rounded-md text-sm ${toast.type === 'success' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : toast.type === 'error' ? 'bg-rose-50 text-rose-700 border border-rose-200' : 'bg-blue-50 text-blue-700 border border-blue-200'}`}>{toast.message}</div>}
+        {toast && (
+          <div className={`mb-4 p-3 rounded-md text-sm flex justify-between items-center ${toast.type === 'success' ? 'bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800' : toast.type === 'error' ? 'bg-rose-50 dark:bg-rose-950 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800' : 'bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800'}`}>
+            <span>{toast.message}</span>
+            <button onClick={() => setToast(null)} className="ml-4 text-neutral-500 hover:text-neutral-700">✕</button>
+          </div>
+        )}
         <div className="space-y-6">
+          <div className="flex flex-wrap gap-2 items-center">
+            <button
+              onClick={handleRunSelected}
+              disabled={selectedIds.size === 0}
+              className={`rounded-md px-4 py-1.5 text-sm font-medium transition-colors ${selectedIds.size > 0 ? 'bg-[#1e3a5f] text-white hover:bg-[#16304f]' : 'bg-neutral-200 text-neutral-500 cursor-not-allowed'}`}
+            >
+              Run selected ({selectedIds.size})
+            </button>
+            <button onClick={toggleSelectAll} className="text-xs text-neutral-500 hover:underline">Select all</button>
+          </div>
+
           <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
             {(["A+", "A", "B", "C", "D"] as Grade[]).map((grade) => {
               const count = grouped[grade]?.length || 0;
               return (
-                <div key={grade} className={`p-3 rounded-lg text-center border ${count > 0 ? 'bg-white' : 'bg-neutral-50 opacity-50'}`}>
+                <div key={grade} className={`p-3 rounded-lg text-center border ${count > 0 ? 'bg-white dark:bg-neutral-700' : 'bg-neutral-50 dark:bg-neutral-800 opacity-50'}`}>
                   <div className="flex items-center justify-center gap-2"><GradePill grade={grade} /><span className="text-xs text-neutral-500">({count})</span></div>
                   <p className="text-[10px] text-neutral-400 mt-1 truncate">{getActionDescription(grade)}</p>
+                  {count > 0 && (
+                    <button onClick={() => handleRunAll(grade)} className="mt-1 text-xs text-[#1e3a5f] hover:underline">Run all</button>
+                  )}
                 </div>
               );
             })}
@@ -695,11 +1140,15 @@ function AutomationPanel({ prospects }: { prospects: Prospect[] }) {
             const prospectsOfGrade = grouped[grade] || [];
             if (prospectsOfGrade.length === 0) return null;
             const action = getAutomatedAction(grade);
-            const isExecutingSome = prospectsOfGrade.some(p => executing[p.id]);
+            const isExecutingSome = prospectsOfGrade.some((p: Prospect) => executing[p.id]);
             return (
-              <motion.div key={grade} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="border border-neutral-200 rounded-lg overflow-hidden">
-                <div className="bg-neutral-50 px-4 py-2 flex flex-wrap items-center justify-between gap-2 border-b border-neutral-200">
-                  <div className="flex items-center gap-3"><GradePill grade={grade} /><span className="text-sm font-medium text-neutral-700">{prospectsOfGrade.length} prospect{prospectsOfGrade.length !== 1 ? 's' : ''}</span><span className="text-xs text-neutral-500">Action: {action}</span></div>
+              <motion.div key={grade} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="border border-neutral-200 dark:border-neutral-700 rounded-lg overflow-hidden">
+                <div className="bg-neutral-50 dark:bg-neutral-800 px-4 py-2 flex flex-wrap items-center justify-between gap-2 border-b border-neutral-200 dark:border-neutral-700">
+                  <div className="flex items-center gap-3">
+                    <GradePill grade={grade} />
+                    <span className="text-sm font-medium text-neutral-700 dark:text-neutral-300">{prospectsOfGrade.length} prospect{prospectsOfGrade.length !== 1 ? 's' : ''}</span>
+                    <span className="text-xs text-neutral-500">Action: {action}</span>
+                  </div>
                   {action !== "Store only" && (
                     <button onClick={() => handleRunAll(grade)} disabled={isExecutingSome} className={`rounded px-3 py-1 text-xs font-medium transition-all ${isExecutingSome ? 'bg-neutral-200 text-neutral-500 cursor-not-allowed' : 'bg-[#1e3a5f] text-white hover:bg-[#16304f] active:scale-95'}`}>
                       {isExecutingSome ? <span className="flex items-center gap-1"><span className="animate-spin h-3 w-3 border-2 border-white border-t-transparent rounded-full" /> Running...</span> : `Run all ${grade}`}
@@ -708,19 +1157,37 @@ function AutomationPanel({ prospects }: { prospects: Prospect[] }) {
                 </div>
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
-                    <thead className="bg-white">
-                      <tr className="text-left text-xs text-neutral-500 border-b border-neutral-100">
+                    <thead className="bg-white dark:bg-neutral-800">
+                      <tr className="text-left text-xs text-neutral-500 border-b border-neutral-100 dark:border-neutral-700">
+                        <th className="px-4 py-2 font-medium">
+                          <input type="checkbox" checked={prospectsOfGrade.every(p => selectedIds.has(p.id))} onChange={() => {
+                            const allIds = prospectsOfGrade.map(p => p.id);
+                            if (allIds.every(id => selectedIds.has(id))) {
+                              allIds.forEach(id => selectedIds.delete(id));
+                            } else {
+                              allIds.forEach(id => selectedIds.add(id));
+                            }
+                            setSelectedIds(new Set(selectedIds));
+                          }} />
+                        </th>
                         <th className="px-4 py-2 font-medium">Company</th><th className="px-4 py-2 font-medium">Industry</th><th className="px-4 py-2 font-medium">Location</th>
                         <th className="px-4 py-2 font-medium text-right">Fit</th><th className="px-4 py-2 font-medium text-right">Intent</th><th className="px-4 py-2 font-medium text-right">Final</th>
                         <th className="px-4 py-2 font-medium text-center">Action</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-neutral-50">
-                      {prospectsOfGrade.map((p) => (
-                        <tr key={p.id} className="hover:bg-neutral-50 transition-colors">
-                          <td className="px-4 py-2.5"><p className="font-medium text-neutral-900">{p.company}</p><p className="text-[10px] text-neutral-400">{p.fundingStage}</p></td>
+                    <tbody className="divide-y divide-neutral-50 dark:divide-neutral-700">
+                      {prospectsOfGrade.map((p: Prospect) => (
+                        <tr key={p.id} className="hover:bg-neutral-50 dark:hover:bg-neutral-700 transition-colors">
+                          <td className="px-4 py-2.5">
+                            <input type="checkbox" checked={selectedIds.has(p.id)} onChange={() => {
+                              if (selectedIds.has(p.id)) selectedIds.delete(p.id);
+                              else selectedIds.add(p.id);
+                              setSelectedIds(new Set(selectedIds));
+                            }} />
+                          </td>
+                          <td className="px-4 py-2.5"><p className="font-medium text-neutral-900 dark:text-white">{p.company}</p><p className="text-[10px] text-neutral-400">{p.fundingStage}</p></td>
                           <td className="px-4 py-2.5"><IndustryPill industry={p.industry} /></td>
-                          <td className="px-4 py-2.5 text-neutral-600">{p.location}</td>
+                          <td className="px-4 py-2.5 text-neutral-600 dark:text-neutral-300">{p.location}</td>
                           <td className="px-4 py-2.5 text-right tabular-nums">{p.fitScore}</td>
                           <td className="px-4 py-2.5 text-right tabular-nums">{p.intentScore}</td>
                           <td className="px-4 py-2.5 text-right tabular-nums font-medium">{p.finalScore}</td>
@@ -739,7 +1206,23 @@ function AutomationPanel({ prospects }: { prospects: Prospect[] }) {
               </motion.div>
             );
           })}
-          {prospects.length === 0 && <div className="text-center py-12 text-neutral-400"><p>No prospects found. Add some via the Search tab or run a scan.</p></div>}
+          {prospects.length === 0 && <div className="text-center py-12 text-neutral-400"><p>No prospects found. Add some via the search panel above.</p></div>}
+
+          {/* Audit Log */}
+          {auditLog.length > 0 && (
+            <div className="border-t border-neutral-200 dark:border-neutral-700 pt-4">
+              <h4 className="text-xs font-medium text-neutral-500 uppercase tracking-wider mb-2">Audit Trail</h4>
+              <div className="max-h-32 overflow-y-auto space-y-1 text-sm text-neutral-600 dark:text-neutral-300">
+                {auditLog.map((entry, idx) => (
+                  <div key={idx} className="flex gap-3">
+                    <span className="text-neutral-400">{entry.time}</span>
+                    <span>{entry.action}</span>
+                    <span className="text-neutral-400">({entry.count} prospects)</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </Card>
       <ActionPreviewModal isOpen={modalOpen} onClose={() => setModalOpen(false)} onConfirm={modalOnConfirm} prospects={modalProspects} grade={modalGrade} action={modalAction} />
@@ -747,24 +1230,49 @@ function AutomationPanel({ prospects }: { prospects: Prospect[] }) {
   );
 }
 
-/* ---- Page ---- */
+/* ---- Main Page ---- */
 export default function ProspectDiscoveryPage() {
   const [tab, setTab] = useState<Tab>("overview");
   const [seed, setSeed] = useState(42);
   const [customProspects, setCustomProspects] = useState<Prospect[]>([]);
   const [deletedIds, setDeletedIds] = useState<Set<string>>(new Set());
   const [isScanning, setIsScanning] = useState(false);
+  // Dark mode with localStorage & system preference
+  const [darkMode, setDarkMode] = useState<boolean>(() => {
+    if (typeof window !== "undefined") {
+      const stored = localStorage.getItem("theme");
+      if (stored) return stored === "dark";
+      return window.matchMedia("(prefers-color-scheme: dark)").matches;
+    }
+    return false;
+  });
+  const [selectedProspect, setSelectedProspect] = useState<Prospect | null>(null);
+  const [detailModalOpen, setDetailModalOpen] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  // Persist dark mode
+  useEffect(() => {
+    if (darkMode) {
+      document.documentElement.classList.add("dark");
+      localStorage.setItem("theme", "dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+      localStorage.setItem("theme", "light");
+    }
+  }, [darkMode]);
 
   const baseProspects = useMemo(() => generateProspects(120, seed), [seed]);
   const allProspects = useMemo(() => {
     const all = [...baseProspects, ...customProspects];
-    return all.filter(p => !deletedIds.has(p.id));
+    return all.filter((p: Prospect) => !deletedIds.has(p.id));
   }, [baseProspects, customProspects, deletedIds]);
   const k = useMemo(() => kpis(allProspects), [allProspects]);
 
-  const handleDeleteProspect = useCallback((id: string) => {
-    setDeletedIds(prev => new Set(prev).add(id));
-  }, []);
+  // Keyboard shortcuts
+  useHotkeys({
+    "cmd+k": () => searchInputRef.current?.focus(),
+    "escape": () => setDetailModalOpen(false),
+  });
 
   const handleScan = useCallback(() => {
     if (isScanning) return;
@@ -772,63 +1280,170 @@ export default function ProspectDiscoveryPage() {
     setTimeout(() => { setSeed(s => s + 1); setIsScanning(false); }, 1500);
   }, [isScanning]);
 
-  const showGrade = tab === "overview" || tab === "prospects";
-  const showQuality = tab === "overview" || tab === "quality";
-  const showTable = tab === "overview" || tab === "prospects";
-  const showSearch = tab === "search";
-  const showAutomation = tab === "automation";
+  const handleSelectProspect = (prospect: Prospect) => {
+    setSelectedProspect(prospect);
+    setDetailModalOpen(true);
+  };
+
+  const handleAddProspect = (prospect: Prospect) => {
+    setCustomProspects(prev => [...prev, prospect]);
+  };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-neutral-50 to-neutral-100 text-neutral-900">
+    <div className="min-h-screen bg-gradient-to-br from-neutral-50 to-neutral-100 dark:from-neutral-900 dark:to-neutral-800 text-neutral-900 dark:text-white transition-colors duration-300">
       <div className="mx-auto max-w-7xl px-5 pt-28 pb-12">
-        <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }} className="mb-5 flex flex-wrap items-center justify-between gap-4">
+        {/* Header */}
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4 }}
+          className="mb-5 flex flex-wrap items-center justify-between gap-4"
+        >
           <div className="flex items-center gap-2.5">
             <h1 className="font-menda-black text-2xl tracking-tight">Prospect Discovery Dashboard</h1>
-            <span className="rounded-md bg-neutral-200 px-2 py-0.5 text-[11px] text-neutral-600">v2.0 · 434 scoring model</span>
+            <span className="rounded-md bg-neutral-200 dark:bg-neutral-700 px-2 py-0.5 text-[11px] text-neutral-600 dark:text-neutral-300">v2.0 · 434 scoring model</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="flex gap-1 bg-white rounded-lg border border-neutral-200 p-1">
-              {TABS.map((t) => (
-                <button key={t.id} onClick={() => setTab(t.id)} className={`rounded-md px-3 py-1.5 text-[13px] transition-all ${tab === t.id ? "bg-[#1e3a5f] text-white shadow-sm" : "text-neutral-500 hover:bg-neutral-100"}`}>
+            <div className="flex gap-1 bg-white dark:bg-neutral-800 rounded-lg border border-neutral-200 dark:border-neutral-700 p-1">
+              {TABS.map((t: { id: Tab; label: string }) => (
+                <button
+                  key={t.id}
+                  onClick={() => setTab(t.id)}
+                  className={`rounded-md px-3 py-1.5 text-[13px] transition-all ${
+                    tab === t.id
+                      ? "bg-[#1e3a5f] text-white shadow-sm"
+                      : "text-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-700"
+                  }`}
+                >
                   {t.label}
                 </button>
               ))}
             </div>
-            <button onClick={() => setSeed(s => s + 1)} className="rounded-md border border-neutral-200 bg-white px-3 py-1.5 text-[13px] text-neutral-500 transition-colors hover:bg-neutral-100" title="Regenerate mock dataset">↻ Reseed</button>
+            <button
+              onClick={() => setSeed(s => s + 1)}
+              className="rounded-md border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 px-3 py-1.5 text-[13px] text-neutral-500 transition-colors hover:bg-neutral-100 dark:hover:bg-neutral-700"
+              title="Regenerate mock dataset"
+            >
+              ↻ Reseed
+            </button>
+            {/* Dark Mode Toggle */}
+            <button
+              onClick={() => setDarkMode(!darkMode)}
+              className="rounded-md border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 px-3 py-1.5 text-[13px] text-neutral-500 transition-colors hover:bg-neutral-100 dark:hover:bg-neutral-700"
+            >
+              {darkMode ? "☀️" : "🌙"}
+            </button>
           </div>
         </motion.div>
 
-        <MorningSummary k={k} onScan={handleScan} isScanning={isScanning} />
+        {/* Morning Summary – only on Overview */}
+        {tab === "overview" && (
+          <MorningSummary k={k} onScan={handleScan} isScanning={isScanning} />
+        )}
 
-        <div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
-          <KpiCard label="Total prospects" value={allProspects.length.toLocaleString()} delay={0.0} />
-          <KpiCard label="A+ prospects" value={k.aPlusCount.toLocaleString()} accent delay={0.05} />
-          <KpiCard label="A prospects" value={k.aCount.toLocaleString()} delay={0.1} />
-          <KpiCard label="Pipeline value (A+/A)" value={`$${(k.pipelineValue / 1000).toFixed(0)}k`} delay={0.15} />
-        </div>
-        <div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
-          <KpiCard label="B prospects" value={k.bCount.toLocaleString()} delay={0.2} />
-          <KpiCard label="Avg final score" value={`${k.avgFinalScore}/100`} delay={0.25} />
-          <KpiCard label="A+ conversion rate" value={`${allProspects.length > 0 ? ((k.aPlusCount / allProspects.length) * 100).toFixed(1) : 0}%`} delay={0.3} />
-          <KpiCard label="A+/A rate" value={`${allProspects.length > 0 ? (((k.aPlusCount + k.aCount) / allProspects.length) * 100).toFixed(1) : 0}%`} delay={0.35} />
-        </div>
+        {/* KPI cards – only on Overview */}
+        {tab === "overview" && (
+          <>
+            <div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
+              <KpiCard
+                label="Total prospects"
+                value={allProspects.length.toLocaleString()}
+                icon="👥"
+                trend={{ value: 12, isPositive: true }}
+                sparklineData={[10, 15, 12, 20, 18, 25, allProspects.length]}
+              />
+              <KpiCard
+                label="A+ prospects"
+                value={k.aPlusCount.toLocaleString()}
+                accent
+                icon="🏆"
+                trend={{ value: 8, isPositive: true }}
+                sparklineData={[0, 2, 1, 3, 2, 4, k.aPlusCount]}
+              />
+              <KpiCard
+                label="A prospects"
+                value={k.aCount.toLocaleString()}
+                icon="⭐"
+                trend={{ value: -3, isPositive: false }}
+                sparklineData={[5, 7, 6, 8, 9, 7, k.aCount]}
+              />
+              <KpiCard
+                label="Pipeline value (A+/A)"
+                value={`$${(k.pipelineValue / 1000).toFixed(0)}k`}
+                icon="💰"
+                trend={{ value: 22, isPositive: true }}
+                sparklineData={[100, 150, 130, 200, 180, 225, k.pipelineValue / 1000]}
+              />
+            </div>
+            <div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
+              <KpiCard
+                label="B prospects"
+                value={k.bCount.toLocaleString()}
+                icon="📊"
+                sparklineData={[20, 25, 30, 28, 35, 40, k.bCount]}
+              />
+              <KpiCard
+                label="Avg final score"
+                value={`${k.avgFinalScore}/100`}
+                icon="📈"
+                trend={{ value: 5, isPositive: true }}
+                sparklineData={[50, 55, 60, 58, 62, 65, k.avgFinalScore]}
+              />
+              <KpiCard
+                label="A+ conversion rate"
+                value={`${allProspects.length > 0 ? ((k.aPlusCount / allProspects.length) * 100).toFixed(1) : 0}%`}
+                icon="🎯"
+              />
+              <KpiCard
+                label="A+/A rate"
+                value={`${allProspects.length > 0 ? (((k.aPlusCount + k.aCount) / allProspects.length) * 100).toFixed(1) : 0}%`}
+                icon="🔥"
+                trend={{ value: 2, isPositive: true }}
+              />
+            </div>
+          </>
+        )}
 
-        {showSearch && <div className="mb-4"><SearchPanel onAddProspect={(p) => setCustomProspects(prev => [...prev, p])} /></div>}
-        {showAutomation && <div className="mb-4"><AutomationPanel prospects={allProspects} /></div>}
-        {(showGrade || showQuality) && (
-          <div className="mb-4 grid gap-4 lg:grid-cols-2">
-            {showGrade && <GradePanel prospects={allProspects} />}
-            {showQuality && <QualityPanel prospects={allProspects} />}
+        {/* Tab content */}
+        {tab === "overview" && (
+          <div className="grid gap-4 lg:grid-cols-2">
+            <GradePanel prospects={allProspects} />
+            <QualityPanel prospects={allProspects} />
           </div>
         )}
-        {showTable && <TopProspects prospects={allProspects} onDeleteProspect={handleDeleteProspect} />}
 
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }} className="mt-8 text-center text-xs text-neutral-400 border-t border-neutral-200 pt-4">
+        {tab === "prospects" && (
+          <div className="space-y-4">
+            <EmailCampaigns />
+            <TopProspects prospects={allProspects} onSelectProspect={handleSelectProspect} />
+          </div>
+        )}
+
+        {tab === "automation" && (
+          <div className="space-y-6">
+            <SearchPanel onAddProspect={handleAddProspect} />
+            <AutomationPanel prospects={allProspects} />
+          </div>
+        )}
+
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.5 }}
+          className="mt-8 text-center text-xs text-neutral-400 dark:text-neutral-500 border-t border-neutral-200 dark:border-neutral-700 pt-4"
+        >
           Data sourced from AI-powered web research, Crunchbase, LinkedIn, and public business registries.
           {customProspects.length > 0 && ` · ${customProspects.length} custom prospects added`}
-          {deletedIds.size > 0 && ` · ${deletedIds.size} deleted`}
+          <span className="block mt-1">⌘K to search · Esc to close modals</span>
         </motion.div>
       </div>
+
+      {/* Prospect Detail Modal */}
+      <ProspectDetailModal
+        prospect={selectedProspect}
+        isOpen={detailModalOpen}
+        onClose={() => setDetailModalOpen(false)}
+      />
     </div>
   );
 }

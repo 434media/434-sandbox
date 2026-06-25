@@ -216,7 +216,7 @@ const COMPANY_NAMES = [
   "Austin Ventures", "LiveOak VC", "Silverton Partners", "Mercury Fund", "S3 Ventures",
 ];
 
-function seededRng(seed: number) {
+export function seededRng(seed: number) {
   let s = seed;
   return () => {
     s = (s * 1664525 + 1013904223) & 0xffffffff;
@@ -396,7 +396,7 @@ function generateSources(p: Prospect): string[] {
   return sources;
 }
 
-function generateContactInfo(company: string, location: Location, rng: () => number) {
+export function generateContactInfo(company: string, location: Location, rng: () => number) {
   const domain = company.toLowerCase().replace(/[^a-z0-9]/g, '');
   const email = `contact@${domain}.com`;
   const areaCode = pick(['210', '512', '214', '713', '817', '469', '830'], rng);
@@ -420,7 +420,7 @@ function generateContactInfo(company: string, location: Location, rng: () => num
   return { email, phone, addresses };
 }
 
-function generateTailoredEmail(p: Prospect): string {
+export function generateTailoredEmail(p: Prospect): string {
   let body = `Subject: Strategic partnership opportunity for ${p.company}\n\n`;
   body += `Dear ${p.company} team,\n\n`;
   body += `I hope this message finds you well. We at 434 Media have been following ${p.company}'s impressive growth in the ${p.industry} space. `;
