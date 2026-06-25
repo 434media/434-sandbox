@@ -55,7 +55,7 @@ function Card({ children, className = "" }: { children: React.ReactNode; classNa
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
-      className={`rounded-xl border border-neutral-200 bg-white p-5 shadow-sm hover:shadow-md transition-shadow dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100 ${className}`}
+      className={`rounded-xl border border-neutral-200 bg-white p-5 shadow-sm hover:shadow-md transition-shadow ${className}`}
     >
       {children}
     </motion.div>
@@ -65,8 +65,8 @@ function Card({ children, className = "" }: { children: React.ReactNode; classNa
 function PanelHead({ title, sub }: { title: string; sub: string }) {
   return (
     <div className="mb-4">
-      <h2 className="text-base font-medium text-neutral-900 dark:text-white">{title}</h2>
-      <p className="text-xs text-neutral-400 dark:text-neutral-400">{sub}</p>
+      <h2 className="text-base font-medium text-neutral-900">{title}</h2>
+      <p className="text-xs text-neutral-400">{sub}</p>
     </div>
   );
 }
@@ -90,16 +90,16 @@ function KpiCard({ label, value, accent = false, delay = 0, trend, sparklineData
   sparklineData?: number[];
   icon?: React.ReactNode;
 }) {
-  const trendColor = trend ? (trend.isPositive ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400") : "";
+  const trendColor = trend ? (trend.isPositive ? "text-emerald-600" : "text-rose-600") : "";
   return (
     <motion.div
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
       transition={{ duration: 0.3, delay }}
-      className={`rounded-xl p-4 ${accent ? "bg-gradient-to-br from-[#1e3a5f] to-[#2a4a7f] text-white" : "bg-neutral-100 dark:bg-neutral-700 text-neutral-900 dark:text-white"}`}
+      className={`rounded-xl p-4 ${accent ? "bg-gradient-to-br from-[#1e3a5f] to-[#2a4a7f] text-white" : "bg-neutral-100 text-neutral-900"}`}
     >
       <div className="flex items-start justify-between">
-        <p className={`text-[13px] ${accent ? "text-blue-200" : "text-neutral-500 dark:text-neutral-400"}`}>{label}</p>
+        <p className={`text-[13px] ${accent ? "text-blue-200" : "text-neutral-500"}`}>{label}</p>
         {icon && <span className="text-lg">{icon}</span>}
       </div>
       <div className="mt-1 flex items-baseline gap-2">
@@ -137,20 +137,20 @@ function MorningSummary({ k, onScan, isScanning }: { k: ReturnType<typeof kpis>;
       initial={{ opacity: 0, y: -10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4 }}
-      className="mb-5 rounded-xl border border-emerald-200 bg-gradient-to-r from-emerald-50 to-teal-50 px-5 py-3.5 flex flex-wrap items-center justify-between gap-y-2 dark:border-emerald-800 dark:from-emerald-950 dark:to-teal-950 dark:text-emerald-100"
+      className="mb-5 rounded-xl border border-emerald-200 bg-gradient-to-r from-emerald-50 to-teal-50 px-5 py-3.5 flex flex-wrap items-center justify-between gap-y-2"
     >
       <div className="flex flex-wrap items-center gap-x-8 gap-y-2">
         <div>
-          <p className="text-[11px] font-medium uppercase tracking-wide text-emerald-600 dark:text-emerald-300">Morning summary</p>
-          <p className="text-[13px] text-emerald-900 dark:text-emerald-200 mt-0.5">
+          <p className="text-[11px] font-medium uppercase tracking-wide text-emerald-600">Morning summary</p>
+          <p className="text-[13px] text-emerald-900 mt-0.5">
             {isScanning ? "⏳ Scanning for new prospects..." : `Nightly scan complete · ${k.total} companies evaluated`}
           </p>
         </div>
         <div className="flex flex-wrap gap-x-6 gap-y-1 text-[13px]">
-          <span className="text-emerald-800 dark:text-emerald-300"><strong>{k.aPlusCount}</strong> A+ prospects ready</span>
-          <span className="text-emerald-800 dark:text-emerald-300"><strong>{k.aCount}</strong> A prospects</span>
-          <span className="text-emerald-800 dark:text-emerald-300"><strong>{k.bCount}</strong> B prospects</span>
-          <span className="text-emerald-800 dark:text-emerald-300">Pipeline value <strong>${(k.pipelineValue / 1000).toFixed(0)}k</strong></span>
+          <span className="text-emerald-800"><strong>{k.aPlusCount}</strong> A+ prospects ready</span>
+          <span className="text-emerald-800"><strong>{k.aCount}</strong> A prospects</span>
+          <span className="text-emerald-800"><strong>{k.bCount}</strong> B prospects</span>
+          <span className="text-emerald-800">Pipeline value <strong>${(k.pipelineValue / 1000).toFixed(0)}k</strong></span>
         </div>
       </div>
       <button
@@ -212,7 +212,7 @@ function GradePanel({ prospects }: { prospects: Prospect[] }) {
               />
             );
           })}
-          <text x="80" y="80" textAnchor="middle" dominantBaseline="central" className="text-sm font-bold fill-current dark:text-white">
+          <text x="80" y="80" textAnchor="middle" dominantBaseline="central" className="text-sm font-bold fill-current">
             {total}
           </text>
         </svg>
@@ -221,17 +221,17 @@ function GradePanel({ prospects }: { prospects: Prospect[] }) {
             <div key={r.grade} className="flex items-center gap-3 text-sm">
               <span className="inline-block h-3 w-3 rounded-full" style={{ backgroundColor: colors[idx % colors.length] }} />
               <span className="font-medium">{r.grade}</span>
-              <span className="text-neutral-500 dark:text-neutral-400">{r.count} ({r.pct.toFixed(0)}%)</span>
+              <span className="text-neutral-500">{r.count} ({r.pct.toFixed(0)}%)</span>
             </div>
           ))}
         </div>
       </div>
-      <div className="mt-5 rounded-lg bg-neutral-50 dark:bg-neutral-700 border border-neutral-100 dark:border-neutral-600 p-3 space-y-1.5">
+      <div className="mt-5 rounded-lg bg-neutral-50 border border-neutral-100 p-3 space-y-1.5">
         <p className="text-[11px] font-medium text-neutral-500 uppercase tracking-wide">Automated actions</p>
         {(["A+", "A", "B", "C"] as Grade[]).map((g) => (
           <div key={g} className="flex items-start gap-2 text-[12px]">
             <GradePill grade={g} />
-            <span className="text-neutral-600 dark:text-neutral-300">{getAutomatedAction(g)}</span>
+            <span className="text-neutral-600">{getAutomatedAction(g)}</span>
           </div>
         ))}
       </div>
@@ -248,10 +248,10 @@ function ScoreHistogram({ prospects }: { prospects: Prospect[] }) {
   return (
     <div>
       <div className="mb-2 flex items-center justify-between">
-        <p className="text-[11px] text-neutral-400 dark:text-neutral-400">{labels[field]}</p>
+        <p className="text-[11px] text-neutral-400">{labels[field]}</p>
         <div className="flex gap-1">
           {(["finalScore", "fitScore", "intentScore"] as const).map((f) => (
-            <button key={f} onClick={() => setField(f)} className={`rounded px-2 py-0.5 text-[11px] transition-colors ${field === f ? "bg-neutral-800 text-white" : "text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-700"}`}>
+            <button key={f} onClick={() => setField(f)} className={`rounded px-2 py-0.5 text-[11px] transition-colors ${field === f ? "bg-neutral-800 text-white" : "text-neutral-400 hover:bg-neutral-100"}`}>
               {f === "finalScore" ? "Final" : f === "fitScore" ? "Fit" : "Intent"}
             </button>
           ))}
@@ -259,10 +259,10 @@ function ScoreHistogram({ prospects }: { prospects: Prospect[] }) {
       </div>
       <div className="flex h-20 items-end gap-1">
         {bins.map((b, idx: number) => (
-          <motion.div key={b.from} className="flex-1 rounded-sm bg-neutral-200 dark:bg-neutral-600 hover:bg-indigo-300 dark:hover:bg-indigo-500 transition-colors cursor-pointer" initial={{ height: 0 }} animate={{ height: `${(b.count / max) * 100}%` }} transition={{ duration: 0.4, delay: idx * 0.02 }} title={`${b.from}–${b.to}: ${b.count} prospects`} />
+          <motion.div key={b.from} className="flex-1 rounded-sm bg-neutral-200 hover:bg-indigo-300 transition-colors cursor-pointer" initial={{ height: 0 }} animate={{ height: `${(b.count / max) * 100}%` }} transition={{ duration: 0.4, delay: idx * 0.02 }} title={`${b.from}–${b.to}: ${b.count} prospects`} />
         ))}
       </div>
-      <div className="mt-1 flex justify-between text-[11px] text-neutral-400 dark:text-neutral-400"><span>0</span><span>50</span><span>100</span></div>
+      <div className="mt-1 flex justify-between text-[11px] text-neutral-400"><span>0</span><span>50</span><span>100</span></div>
     </div>
   );
 }
@@ -295,7 +295,7 @@ function Scatter({ prospects }: { prospects: Prospect[] }) {
 
   return (
     <div>
-      <p className="mb-2 text-[11px] text-neutral-400 dark:text-neutral-400">Fit × Intent — dot size = deal value. <strong>Hover</strong> for details.</p>
+      <p className="mb-2 text-[11px] text-neutral-400">Fit × Intent — dot size = deal value. <strong>Hover</strong> for details.</p>
       <svg viewBox={`0 0 ${W} ${H}`} className="w-full" role="img">
         <rect x={TX} y={T} width={R - TX} height={TY - T} fill="#f0fdf4" rx={3} />
         <text x={(TX + R) / 2} y={T + 14} textAnchor="middle" fontSize="10" fill="#059669">Prioritize</text>
@@ -334,7 +334,7 @@ function Scatter({ prospects }: { prospects: Prospect[] }) {
       </svg>
       <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1">
         {(["A+", "A", "B", "C", "D"] as Grade[]).map((g) => (
-          <span key={g} className="flex items-center gap-1 text-[11px] text-neutral-500 dark:text-neutral-400">
+          <span key={g} className="flex items-center gap-1 text-[11px] text-neutral-500">
             <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ backgroundColor: SCATTER_GRADE_COLOR[g] }} />
             {g}
           </span>
@@ -387,10 +387,10 @@ function TopProspects({
 
   const getRowBg = (grade: Grade) => {
     switch (grade) {
-      case "A+": return "bg-emerald-50 dark:bg-emerald-950/30";
-      case "A": return "bg-teal-50 dark:bg-teal-950/20";
-      case "B": return "bg-sky-50 dark:bg-sky-950/20";
-      case "C": return "bg-amber-50 dark:bg-amber-950/20";
+      case "A+": return "bg-emerald-50";
+      case "A": return "bg-teal-50";
+      case "B": return "bg-sky-50";
+      case "C": return "bg-amber-50";
       default: return "";
     }
   };
@@ -399,7 +399,7 @@ function TopProspects({
     <Card>
       <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h2 className="text-base font-medium text-neutral-900 dark:text-white">Top Prospects</h2>
+          <h2 className="text-base font-medium text-neutral-900">Top Prospects</h2>
           <p className="text-xs text-neutral-400">Click any row for full details</p>
         </div>
         <div className="flex gap-1 text-xs">
@@ -410,7 +410,7 @@ function TopProspects({
               className={`rounded-md border px-2.5 py-1 transition-colors ${
                 sortBy === s
                   ? "border-[#1e3a5f] bg-[#1e3a5f] text-white"
-                  : "border-neutral-200 dark:border-neutral-700 text-neutral-500 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-700"
+                  : "border-neutral-200 text-neutral-500 hover:bg-neutral-50"
               }`}
             >
               {sortLabels[s]}
@@ -426,12 +426,12 @@ function TopProspects({
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           placeholder="Search companies..."
-          className="rounded-md border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-700 px-3 py-1.5 text-sm text-neutral-900 dark:text-white focus:border-[#1e3a5f] focus:outline-none focus:ring-1 focus:ring-[#1e3a5f]"
+          className="rounded-md border border-neutral-300 bg-white px-3 py-1.5 text-sm text-neutral-900 focus:border-[#1e3a5f] focus:outline-none focus:ring-1 focus:ring-[#1e3a5f]"
         />
         <select
           value={filterIndustry}
           onChange={(e) => setFilterIndustry(e.target.value)}
-          className="rounded-md border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-700 px-2 py-1.5 text-sm text-neutral-900 dark:text-white"
+          className="rounded-md border border-neutral-300 bg-white px-2 py-1.5 text-sm text-neutral-900"
         >
           <option value="all">All industries</option>
           {industries.map(ind => <option key={ind} value={ind}>{ind}</option>)}
@@ -439,7 +439,7 @@ function TopProspects({
         <select
           value={filterLocation}
           onChange={(e) => setFilterLocation(e.target.value)}
-          className="rounded-md border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-700 px-2 py-1.5 text-sm text-neutral-900 dark:text-white"
+          className="rounded-md border border-neutral-300 bg-white px-2 py-1.5 text-sm text-neutral-900"
         >
           <option value="all">All locations</option>
           {locations.map(loc => <option key={loc} value={loc}>{loc}</option>)}
@@ -447,18 +447,18 @@ function TopProspects({
         <select
           value={filterGrade}
           onChange={(e) => setFilterGrade(e.target.value)}
-          className="rounded-md border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-700 px-2 py-1.5 text-sm text-neutral-900 dark:text-white"
+          className="rounded-md border border-neutral-300 bg-white px-2 py-1.5 text-sm text-neutral-900"
         >
           <option value="all">All grades</option>
           {grades.map(g => <option key={g} value={g}>{g}</option>)}
         </select>
-        <span className="text-xs text-neutral-400 dark:text-neutral-400">{filtered.length} prospects</span>
+        <span className="text-xs text-neutral-400">{filtered.length} prospects</span>
       </div>
 
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-neutral-100 dark:border-neutral-700 text-left text-[11px] uppercase tracking-wide text-neutral-400">
+            <tr className="border-b border-neutral-100 text-left text-[11px] uppercase tracking-wide text-neutral-400">
               <th className="pb-2 pr-4 font-medium">Company</th>
               <th className="pb-2 pr-4 font-medium">Industry</th>
               <th className="pb-2 pr-4 font-medium">Location</th>
@@ -470,7 +470,7 @@ function TopProspects({
               <th className="pb-2 font-medium text-center">Action</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-neutral-50 dark:divide-neutral-700">
+          <tbody className="divide-y divide-neutral-50">
             {rows.map((p: Prospect) => (
               <tr
                 key={p.id}
@@ -478,36 +478,36 @@ function TopProspects({
                 className={`cursor-pointer hover:opacity-80 transition-opacity ${getRowBg(p.grade)}`}
               >
                 <td className="py-2.5 pr-4">
-                  <p className="font-medium text-neutral-900 dark:text-white">{p.company}</p>
+                  <p className="font-medium text-neutral-900">{p.company}</p>
                   <p className="text-[11px] text-neutral-400">
                     {ageInDays(p.discoveredAt)}d ago · {p.fundingStage}
                   </p>
                 </td>
                 <td className="py-2.5 pr-4"><IndustryPill industry={p.industry} /></td>
-                <td className="py-2.5 pr-4 text-[13px] text-neutral-600 dark:text-neutral-300 whitespace-nowrap">
+                <td className="py-2.5 pr-4 text-[13px] text-neutral-600 whitespace-nowrap">
                   {p.location}
                 </td>
                 <td className="py-2.5 pr-4 text-right">
                   <div className="flex items-center justify-end gap-1">
-                    <span className="text-[13px] tabular-nums text-neutral-600 dark:text-neutral-300">{p.fitScore}</span>
-                    <div className="w-12 h-1.5 bg-neutral-200 dark:bg-neutral-600 rounded-full overflow-hidden">
+                    <span className="text-[13px] tabular-nums text-neutral-600">{p.fitScore}</span>
+                    <div className="w-12 h-1.5 bg-neutral-200 rounded-full overflow-hidden">
                       <div className="h-full bg-[#1e3a5f] rounded-full" style={{ width: `${p.fitScore}%` }} />
                     </div>
                   </div>
                 </td>
                 <td className="py-2.5 pr-4 text-right">
                   <div className="flex items-center justify-end gap-1">
-                    <span className="text-[13px] tabular-nums text-neutral-600 dark:text-neutral-300">{p.intentScore}</span>
-                    <div className="w-12 h-1.5 bg-neutral-200 dark:bg-neutral-600 rounded-full overflow-hidden">
+                    <span className="text-[13px] tabular-nums text-neutral-600">{p.intentScore}</span>
+                    <div className="w-12 h-1.5 bg-neutral-200 rounded-full overflow-hidden">
                       <div className="h-full bg-[#1e3a5f] rounded-full" style={{ width: `${p.intentScore}%` }} />
                     </div>
                   </div>
                 </td>
-                <td className="py-2.5 pr-4 text-right tabular-nums text-[13px] font-medium text-neutral-900 dark:text-white">
+                <td className="py-2.5 pr-4 text-right tabular-nums text-[13px] font-medium text-neutral-900">
                   {p.finalScore}
                 </td>
                 <td className="py-2.5 pr-4"><GradePill grade={p.grade} /></td>
-                <td className="py-2.5 pr-4 text-right tabular-nums text-[13px] text-neutral-600 dark:text-neutral-300 whitespace-nowrap">
+                <td className="py-2.5 pr-4 text-right tabular-nums text-[13px] text-neutral-600 whitespace-nowrap">
                   ${(p.estimatedDealValue / 1000).toFixed(0)}k
                 </td>
                 <td className="py-2.5 text-center">
@@ -545,28 +545,28 @@ function EmailCampaigns() {
     <Card>
       <div className="flex items-start justify-between">
         <div>
-          <h2 className="text-base font-medium text-neutral-900 dark:text-white">Email Campaigns</h2>
+          <h2 className="text-base font-medium text-neutral-900">Email Campaigns</h2>
           <p className="text-xs text-neutral-400">Last 30 days</p>
         </div>
-        <span className="rounded-full bg-emerald-100 dark:bg-emerald-900 px-2.5 py-0.5 text-xs font-medium text-emerald-700 dark:text-emerald-300">
+        <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-medium text-emerald-700">
           +{Math.round(Math.random() * 20)}% vs last month
         </span>
       </div>
       <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <div onClick={() => handleStatClick("Sent")} className="rounded-lg bg-neutral-50 dark:bg-neutral-700 p-3 text-center cursor-pointer hover:bg-neutral-100 dark:hover:bg-neutral-600 transition-colors">
-          <p className="text-2xl font-semibold text-neutral-800 dark:text-white">{stats.sent}</p>
+        <div onClick={() => handleStatClick("Sent")} className="rounded-lg bg-neutral-50 p-3 text-center cursor-pointer hover:bg-neutral-100 transition-colors">
+          <p className="text-2xl font-semibold text-neutral-800">{stats.sent}</p>
           <p className="text-[11px] text-neutral-500">Emails sent</p>
         </div>
-        <div onClick={() => handleStatClick("Opened")} className="rounded-lg bg-neutral-50 dark:bg-neutral-700 p-3 text-center cursor-pointer hover:bg-neutral-100 dark:hover:bg-neutral-600 transition-colors">
-          <p className="text-2xl font-semibold text-neutral-800 dark:text-white">{stats.opened}</p>
+        <div onClick={() => handleStatClick("Opened")} className="rounded-lg bg-neutral-50 p-3 text-center cursor-pointer hover:bg-neutral-100 transition-colors">
+          <p className="text-2xl font-semibold text-neutral-800">{stats.opened}</p>
           <p className="text-[11px] text-neutral-500">Opened</p>
         </div>
-        <div onClick={() => handleStatClick("Replies")} className="rounded-lg bg-neutral-50 dark:bg-neutral-700 p-3 text-center cursor-pointer hover:bg-neutral-100 dark:hover:bg-neutral-600 transition-colors">
-          <p className="text-2xl font-semibold text-neutral-800 dark:text-white">{stats.replied}</p>
+        <div onClick={() => handleStatClick("Replies")} className="rounded-lg bg-neutral-50 p-3 text-center cursor-pointer hover:bg-neutral-100 transition-colors">
+          <p className="text-2xl font-semibold text-neutral-800">{stats.replied}</p>
           <p className="text-[11px] text-neutral-500">Replies</p>
         </div>
-        <div onClick={() => handleStatClick("Conversion")} className="rounded-lg bg-neutral-50 dark:bg-neutral-700 p-3 text-center cursor-pointer hover:bg-neutral-100 dark:hover:bg-neutral-600 transition-colors">
-          <p className="text-2xl font-semibold text-neutral-800 dark:text-white">{stats.conversionRate}%</p>
+        <div onClick={() => handleStatClick("Conversion")} className="rounded-lg bg-neutral-50 p-3 text-center cursor-pointer hover:bg-neutral-100 transition-colors">
+          <p className="text-2xl font-semibold text-neutral-800">{stats.conversionRate}%</p>
           <p className="text-[11px] text-neutral-500">Conversion rate</p>
         </div>
       </div>
@@ -614,11 +614,11 @@ function ProspectDetailModal({
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.9 }}
             transition={{ duration: 0.2 }}
-            className="bg-white dark:bg-neutral-800 rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6 mx-4"
+            className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6 mx-4"
           >
             <div className="flex items-start justify-between mb-4">
               <div>
-                <h2 className="text-xl font-semibold text-neutral-900 dark:text-white">{prospect.company}</h2>
+                <h2 className="text-xl font-semibold text-neutral-900">{prospect.company}</h2>
                 <div className="mt-1 flex flex-wrap gap-2">
                   <IndustryPill industry={prospect.industry} />
                   <span className="text-sm text-neutral-500">{prospect.location}</span>
@@ -652,54 +652,54 @@ function ProspectDetailModal({
               </div>
             </div>
 
-            <div className="border-t border-neutral-200 dark:border-neutral-700 pt-3 mb-3">
-              <h4 className="text-sm font-medium text-neutral-700 dark:text-neutral-300">📞 Contact Information</h4>
-              <div className="mt-2 grid grid-cols-1 gap-2 text-sm text-neutral-600 dark:text-neutral-300 sm:grid-cols-2">
+            <div className="border-t border-neutral-200 pt-3 mb-3">
+              <h4 className="text-sm font-medium text-neutral-700">📞 Contact Information</h4>
+              <div className="mt-2 grid grid-cols-1 gap-2 text-sm text-neutral-600 sm:grid-cols-2">
                 <div><span className="font-medium">Email:</span> <a href={`mailto:${contact.email}`} className="text-blue-600 hover:underline">{contact.email}</a></div>
                 <div><span className="font-medium">Phone:</span> <a href={`tel:${contact.phone}`} className="text-blue-600 hover:underline">{contact.phone}</a></div>
               </div>
               {contact.addresses.length > 0 && (
                 <div className="mt-2">
                   <span className="font-medium">📍 Addresses:</span>
-                  <ul className="mt-1 list-disc pl-5 text-sm text-neutral-600 dark:text-neutral-300">
+                  <ul className="mt-1 list-disc pl-5 text-sm text-neutral-600">
                     {contact.addresses.map((addr: string, idx: number) => <li key={idx}>{addr}</li>)}
                   </ul>
                 </div>
               )}
             </div>
 
-            <div className="border-t border-neutral-200 dark:border-neutral-700 pt-3 mb-3">
-              <h4 className="text-sm font-medium text-neutral-700 dark:text-neutral-300">📝 Notes</h4>
+            <div className="border-t border-neutral-200 pt-3 mb-3">
+              <h4 className="text-sm font-medium text-neutral-700">📝 Notes</h4>
               <textarea
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 placeholder="Add internal notes..."
-                className="mt-1 w-full rounded-md border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-700 p-2 text-sm text-neutral-900 dark:text-white focus:border-[#1e3a5f] focus:outline-none"
+                className="mt-1 w-full rounded-md border border-neutral-300 bg-white p-2 text-sm text-neutral-900 focus:border-[#1e3a5f] focus:outline-none"
                 rows={2}
               />
             </div>
 
-            <div className="border-t border-neutral-200 dark:border-neutral-700 pt-3 mb-3">
-              <h4 className="text-sm font-medium text-neutral-700 dark:text-neutral-300">⏳ Timeline</h4>
-              <ul className="mt-1 space-y-1 text-sm text-neutral-600 dark:text-neutral-300">
+            <div className="border-t border-neutral-200 pt-3 mb-3">
+              <h4 className="text-sm font-medium text-neutral-700">⏳ Timeline</h4>
+              <ul className="mt-1 space-y-1 text-sm text-neutral-600">
                 {timeline.map((item, idx) => (
                   <li key={idx} className="flex gap-2"><span className="text-neutral-400">{item.date}:</span> {item.event}</li>
                 ))}
               </ul>
             </div>
 
-            <div className="border-t border-neutral-200 dark:border-neutral-700 pt-3">
+            <div className="border-t border-neutral-200 pt-3">
               <details className="group">
-                <summary className="cursor-pointer text-sm font-medium text-neutral-700 dark:text-neutral-300 hover:text-neutral-900">
+                <summary className="cursor-pointer text-sm font-medium text-neutral-700 hover:text-neutral-900">
                   ✉️ Tailored Email Draft
                 </summary>
-                <div className="mt-2 rounded-md bg-white dark:bg-neutral-700 p-3 text-sm font-mono whitespace-pre-wrap border border-neutral-200 dark:border-neutral-600 text-neutral-800 dark:text-neutral-200">
+                <div className="mt-2 rounded-md bg-white p-3 text-sm font-mono whitespace-pre-wrap border border-neutral-200 text-neutral-800">
                   {tailoredEmail}
                 </div>
                 <div className="mt-2 flex gap-2">
                   <button
                     onClick={() => navigator.clipboard?.writeText(tailoredEmail)}
-                    className="rounded-md border border-neutral-300 dark:border-neutral-600 px-3 py-1 text-xs text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-600 transition-colors"
+                    className="rounded-md border border-neutral-300 px-3 py-1 text-xs text-neutral-600 hover:bg-neutral-100 transition-colors"
                   >
                     Copy email
                   </button>
@@ -812,7 +812,7 @@ function SearchPanel({ onAddProspect }: { onAddProspect: (p: Prospect) => void }
                 onFocus={() => query.length >= 2 && suggestions.length > 0 && setShowSuggestions(true)}
                 onKeyDown={(e) => e.key === "Enter" && handleSearch()}
                 placeholder="Search for any company (Cmd+K) ..."
-                className="w-full rounded-md border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-700 px-4 py-2.5 text-sm text-neutral-900 dark:text-white focus:border-[#1e3a5f] focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]/20 transition-all"
+                className="w-full rounded-md border border-neutral-300 bg-white px-4 py-2.5 text-sm text-neutral-900 focus:border-[#1e3a5f] focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]/20 transition-all"
               />
             </div>
             <button
@@ -835,7 +835,7 @@ function SearchPanel({ onAddProspect }: { onAddProspect: (p: Prospect) => void }
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -5 }}
                 transition={{ duration: 0.15 }}
-                className="absolute z-50 mt-1 w-full max-h-60 overflow-y-auto rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 shadow-lg"
+                className="absolute z-50 mt-1 w-full max-h-60 overflow-y-auto rounded-lg border border-neutral-200 bg-white shadow-lg"
               >
                 {suggestions.map((company, idx: number) => (
                   <motion.li
@@ -844,7 +844,7 @@ function SearchPanel({ onAddProspect }: { onAddProspect: (p: Prospect) => void }
                     animate={{ opacity: 1 }}
                     transition={{ delay: idx * 0.02 }}
                     onClick={() => handleSelectSuggestion(company)}
-                    className="px-4 py-2.5 text-sm text-neutral-700 dark:text-neutral-300 hover:bg-[#1e3a5f]/5 cursor-pointer transition-colors border-b border-neutral-50 dark:border-neutral-700 last:border-0"
+                    className="px-4 py-2.5 text-sm text-neutral-700 hover:bg-[#1e3a5f]/5 cursor-pointer transition-colors border-b border-neutral-50 last:border-0"
                   >
                     <div className="flex items-center gap-2">
                       <svg className="w-4 h-4 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -866,12 +866,12 @@ function SearchPanel({ onAddProspect }: { onAddProspect: (p: Prospect) => void }
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
               transition={{ duration: 0.3 }}
-              className="mt-2 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-700 p-4"
+              className="mt-2 rounded-lg border border-neutral-200 bg-neutral-50 p-4"
             >
               <div className="flex flex-col gap-4">
                 <div className="flex flex-wrap items-start justify-between gap-4">
                   <div>
-                    <h3 className="text-lg font-medium text-neutral-900 dark:text-white">{result.company}</h3>
+                    <h3 className="text-lg font-medium text-neutral-900">{result.company}</h3>
                     <div className="mt-1 flex flex-wrap gap-2">
                       <IndustryPill industry={result.industry} />
                       <span className="text-sm text-neutral-500">{result.location}</span>
@@ -891,49 +891,49 @@ function SearchPanel({ onAddProspect }: { onAddProspect: (p: Prospect) => void }
                   </button>
                 </div>
 
-                <div className="border-t border-neutral-200 dark:border-neutral-600 pt-3">
-                  <h4 className="text-sm font-medium text-neutral-700 dark:text-neutral-300">📞 Contact Information</h4>
-                  <div className="mt-2 grid grid-cols-1 gap-2 text-sm text-neutral-600 dark:text-neutral-300 sm:grid-cols-2">
+                <div className="border-t border-neutral-200 pt-3">
+                  <h4 className="text-sm font-medium text-neutral-700">📞 Contact Information</h4>
+                  <div className="mt-2 grid grid-cols-1 gap-2 text-sm text-neutral-600 sm:grid-cols-2">
                     <div><span className="font-medium">Email:</span> <a href={`mailto:${result.contactEmail}`} className="text-blue-600 hover:underline">{result.contactEmail}</a></div>
                     <div><span className="font-medium">Phone:</span> <a href={`tel:${result.contactPhone}`} className="text-blue-600 hover:underline">{result.contactPhone}</a></div>
                   </div>
                   {result.addresses.length > 0 && (
                     <div className="mt-2">
                       <span className="font-medium">📍 Addresses:</span>
-                      <ul className="mt-1 list-disc pl-5 text-sm text-neutral-600 dark:text-neutral-300">
+                      <ul className="mt-1 list-disc pl-5 text-sm text-neutral-600">
                         {result.addresses.map((addr: string, idx: number) => <li key={idx}>{addr}</li>)}
                       </ul>
                     </div>
                   )}
                 </div>
 
-                <div className="border-t border-neutral-200 dark:border-neutral-600 pt-3">
+                <div className="border-t border-neutral-200 pt-3">
                   <details className="group">
-                    <summary className="cursor-pointer text-sm font-medium text-neutral-700 dark:text-neutral-300 hover:text-neutral-900">
+                    <summary className="cursor-pointer text-sm font-medium text-neutral-700 hover:text-neutral-900">
                       📋 Why this score? (click to expand)
                     </summary>
-                    <div className="mt-2 space-y-2 text-sm text-neutral-700 dark:text-neutral-300 whitespace-pre-wrap">
+                    <div className="mt-2 space-y-2 text-sm text-neutral-700 whitespace-pre-wrap">
                       <p className="leading-relaxed">{result.summary}</p>
                       <div>
                         <p className="text-xs font-medium text-neutral-500">Sources:</p>
                         <ul className="mt-1 flex flex-wrap gap-1.5">
-                          {result.sources.map((src: string, idx: number) => <li key={idx} className="rounded-full bg-neutral-200 dark:bg-neutral-600 px-2.5 py-0.5 text-xs text-neutral-700 dark:text-neutral-300">{src}</li>)}
+                          {result.sources.map((src: string, idx: number) => <li key={idx} className="rounded-full bg-neutral-200 px-2.5 py-0.5 text-xs text-neutral-700">{src}</li>)}
                         </ul>
                       </div>
                     </div>
                   </details>
                 </div>
 
-                <div className="border-t border-neutral-200 dark:border-neutral-600 pt-3">
+                <div className="border-t border-neutral-200 pt-3">
                   <details className="group">
-                    <summary className="cursor-pointer text-sm font-medium text-neutral-700 dark:text-neutral-300 hover:text-neutral-900">
+                    <summary className="cursor-pointer text-sm font-medium text-neutral-700 hover:text-neutral-900">
                       ✉️ Tailored Email Draft (click to expand)
                     </summary>
-                    <div className="mt-2 rounded-md bg-white dark:bg-neutral-800 p-3 text-sm font-mono whitespace-pre-wrap border border-neutral-200 dark:border-neutral-600 text-neutral-800 dark:text-neutral-200">
+                    <div className="mt-2 rounded-md bg-white p-3 text-sm font-mono whitespace-pre-wrap border border-neutral-200 text-neutral-800">
                       {result.tailoredEmail}
                     </div>
                     <div className="mt-2 flex gap-2">
-                      <button onClick={() => navigator.clipboard?.writeText(result.tailoredEmail)} className="rounded-md border border-neutral-300 dark:border-neutral-600 px-3 py-1 text-xs text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-600 transition-colors">
+                      <button onClick={() => navigator.clipboard?.writeText(result.tailoredEmail)} className="rounded-md border border-neutral-300 px-3 py-1 text-xs text-neutral-600 hover:bg-neutral-100 transition-colors">
                         Copy email
                       </button>
                       <a href={`mailto:${result.contactEmail}?subject=Strategic%20partnership%20opportunity%20for%20${encodeURIComponent(result.company)}&body=${encodeURIComponent(result.tailoredEmail)}`} className="rounded-md bg-[#1e3a5f] px-3 py-1 text-xs text-white hover:bg-[#16304f] transition-colors">
@@ -968,10 +968,10 @@ function ActionPreviewModal({ isOpen, onClose, onConfirm, prospects, grade, acti
     <AnimatePresence>
       {isOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-          <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} transition={{ duration: 0.2 }} className="bg-white dark:bg-neutral-800 rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6 mx-4">
+          <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} transition={{ duration: 0.2 }} className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6 mx-4">
             <div className="flex items-start justify-between mb-4">
               <div>
-                <h2 className="text-xl font-semibold text-neutral-900 dark:text-white">Confirm Action</h2>
+                <h2 className="text-xl font-semibold text-neutral-900">Confirm Action</h2>
                 <p className="text-sm text-neutral-500">{prospects.length === 1 ? `Prospect: ${prospects[0].company} (Grade ${grade})` : `${prospects.length} prospects (Grade ${grade})`}</p>
               </div>
               <button onClick={onClose} className="text-neutral-400 hover:text-neutral-600 transition-colors">
@@ -979,22 +979,22 @@ function ActionPreviewModal({ isOpen, onClose, onConfirm, prospects, grade, acti
               </button>
             </div>
             <div className="space-y-4">
-              <div className="bg-neutral-50 dark:bg-neutral-700 rounded-lg p-4"><p className="text-sm font-medium text-neutral-700 dark:text-neutral-300">Action: <span className="font-normal">{action}</span></p></div>
-              <div className="border border-neutral-200 dark:border-neutral-700 rounded-lg divide-y divide-neutral-100 dark:divide-neutral-700">
-                <div className="p-3 flex items-start gap-3"><span className="text-sm font-medium text-neutral-700 dark:text-neutral-300 w-20">📧 Email</span><span className="text-sm text-neutral-600 dark:text-neutral-400">{details.email}</span></div>
-                <div className="p-3 flex items-start gap-3"><span className="text-sm font-medium text-neutral-700 dark:text-neutral-300 w-20">🔗 LinkedIn</span><span className="text-sm text-neutral-600 dark:text-neutral-400">{details.linkedin}</span></div>
-                <div className="p-3 flex items-start gap-3"><span className="text-sm font-medium text-neutral-700 dark:text-neutral-300 w-20">📞 Call</span><span className="text-sm text-neutral-600 dark:text-neutral-400">{details.call}</span></div>
-                <div className="p-3 flex items-start gap-3"><span className="text-sm font-medium text-neutral-700 dark:text-neutral-300 w-20">📋 CRM</span><span className="text-sm text-neutral-600 dark:text-neutral-400">{details.crm}</span></div>
+              <div className="bg-neutral-50 rounded-lg p-4"><p className="text-sm font-medium text-neutral-700">Action: <span className="font-normal">{action}</span></p></div>
+              <div className="border border-neutral-200 rounded-lg divide-y divide-neutral-100">
+                <div className="p-3 flex items-start gap-3"><span className="text-sm font-medium text-neutral-700 w-20">📧 Email</span><span className="text-sm text-neutral-600">{details.email}</span></div>
+                <div className="p-3 flex items-start gap-3"><span className="text-sm font-medium text-neutral-700 w-20">🔗 LinkedIn</span><span className="text-sm text-neutral-600">{details.linkedin}</span></div>
+                <div className="p-3 flex items-start gap-3"><span className="text-sm font-medium text-neutral-700 w-20">📞 Call</span><span className="text-sm text-neutral-600">{details.call}</span></div>
+                <div className="p-3 flex items-start gap-3"><span className="text-sm font-medium text-neutral-700 w-20">📋 CRM</span><span className="text-sm text-neutral-600">{details.crm}</span></div>
               </div>
               {prospects.length > 1 && (
-                <div className="border border-neutral-200 dark:border-neutral-700 rounded-lg p-3">
+                <div className="border border-neutral-200 rounded-lg p-3">
                   <p className="text-xs font-medium text-neutral-500 uppercase tracking-wider mb-2">Affected prospects</p>
                   <div className="max-h-32 overflow-y-auto space-y-1">
-                    {prospects.map((p: Prospect) => <div key={p.id} className="text-sm text-neutral-600 dark:text-neutral-400 flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-neutral-300" />{p.company}</div>)}
+                    {prospects.map((p: Prospect) => <div key={p.id} className="text-sm text-neutral-600 flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-neutral-300" />{p.company}</div>)}
                   </div>
                 </div>
               )}
-              <div className="bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-lg p-3 text-xs text-amber-800 dark:text-amber-300">⚠️ This action will send real outreach (emails, LinkedIn messages, etc.) and update your CRM. Please review the details above before confirming.</div>
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs text-amber-800">⚠️ This action will send real outreach (emails, LinkedIn messages, etc.) and update your CRM. Please review the details above before confirming.</div>
             </div>
             <div className="mt-6 flex justify-end gap-3">
               <button onClick={onClose} className="px-4 py-2 text-sm font-medium text-neutral-600 hover:bg-neutral-100 rounded-md transition-colors">Cancel</button>
@@ -1104,7 +1104,7 @@ function AutomationPanel({ prospects }: { prospects: Prospect[] }) {
       <Card>
         <PanelHead title="Automated Actions" sub="Execute predefined workflows based on prospect grade" />
         {toast && (
-          <div className={`mb-4 p-3 rounded-md text-sm flex justify-between items-center ${toast.type === 'success' ? 'bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800' : toast.type === 'error' ? 'bg-rose-50 dark:bg-rose-950 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800' : 'bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800'}`}>
+          <div className={`mb-4 p-3 rounded-md text-sm flex justify-between items-center ${toast.type === 'success' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : toast.type === 'error' ? 'bg-rose-50 text-rose-700 border border-rose-200' : 'bg-blue-50 text-blue-700 border border-blue-200'}`}>
             <span>{toast.message}</span>
             <button onClick={() => setToast(null)} className="ml-4 text-neutral-500 hover:text-neutral-700">✕</button>
           </div>
@@ -1125,7 +1125,7 @@ function AutomationPanel({ prospects }: { prospects: Prospect[] }) {
             {(["A+", "A", "B", "C", "D"] as Grade[]).map((grade) => {
               const count = grouped[grade]?.length || 0;
               return (
-                <div key={grade} className={`p-3 rounded-lg text-center border ${count > 0 ? 'bg-white dark:bg-neutral-700' : 'bg-neutral-50 dark:bg-neutral-800 opacity-50'}`}>
+                <div key={grade} className={`p-3 rounded-lg text-center border ${count > 0 ? 'bg-white' : 'bg-neutral-50 opacity-50'}`}>
                   <div className="flex items-center justify-center gap-2"><GradePill grade={grade} /><span className="text-xs text-neutral-500">({count})</span></div>
                   <p className="text-[10px] text-neutral-400 mt-1 truncate">{getActionDescription(grade)}</p>
                   {count > 0 && (
@@ -1142,11 +1142,11 @@ function AutomationPanel({ prospects }: { prospects: Prospect[] }) {
             const action = getAutomatedAction(grade);
             const isExecutingSome = prospectsOfGrade.some((p: Prospect) => executing[p.id]);
             return (
-              <motion.div key={grade} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="border border-neutral-200 dark:border-neutral-700 rounded-lg overflow-hidden">
-                <div className="bg-neutral-50 dark:bg-neutral-800 px-4 py-2 flex flex-wrap items-center justify-between gap-2 border-b border-neutral-200 dark:border-neutral-700">
+              <motion.div key={grade} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="border border-neutral-200 rounded-lg overflow-hidden">
+                <div className="bg-neutral-50 px-4 py-2 flex flex-wrap items-center justify-between gap-2 border-b border-neutral-200">
                   <div className="flex items-center gap-3">
                     <GradePill grade={grade} />
-                    <span className="text-sm font-medium text-neutral-700 dark:text-neutral-300">{prospectsOfGrade.length} prospect{prospectsOfGrade.length !== 1 ? 's' : ''}</span>
+                    <span className="text-sm font-medium text-neutral-700">{prospectsOfGrade.length} prospect{prospectsOfGrade.length !== 1 ? 's' : ''}</span>
                     <span className="text-xs text-neutral-500">Action: {action}</span>
                   </div>
                   {action !== "Store only" && (
@@ -1157,8 +1157,8 @@ function AutomationPanel({ prospects }: { prospects: Prospect[] }) {
                 </div>
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
-                    <thead className="bg-white dark:bg-neutral-800">
-                      <tr className="text-left text-xs text-neutral-500 border-b border-neutral-100 dark:border-neutral-700">
+                    <thead className="bg-white">
+                      <tr className="text-left text-xs text-neutral-500 border-b border-neutral-100">
                         <th className="px-4 py-2 font-medium">
                           <input type="checkbox" checked={prospectsOfGrade.every(p => selectedIds.has(p.id))} onChange={() => {
                             const allIds = prospectsOfGrade.map(p => p.id);
@@ -1175,9 +1175,9 @@ function AutomationPanel({ prospects }: { prospects: Prospect[] }) {
                         <th className="px-4 py-2 font-medium text-center">Action</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-neutral-50 dark:divide-neutral-700">
+                    <tbody className="divide-y divide-neutral-50">
                       {prospectsOfGrade.map((p: Prospect) => (
-                        <tr key={p.id} className="hover:bg-neutral-50 dark:hover:bg-neutral-700 transition-colors">
+                        <tr key={p.id} className="hover:bg-neutral-50 transition-colors">
                           <td className="px-4 py-2.5">
                             <input type="checkbox" checked={selectedIds.has(p.id)} onChange={() => {
                               if (selectedIds.has(p.id)) selectedIds.delete(p.id);
@@ -1185,9 +1185,9 @@ function AutomationPanel({ prospects }: { prospects: Prospect[] }) {
                               setSelectedIds(new Set(selectedIds));
                             }} />
                           </td>
-                          <td className="px-4 py-2.5"><p className="font-medium text-neutral-900 dark:text-white">{p.company}</p><p className="text-[10px] text-neutral-400">{p.fundingStage}</p></td>
+                          <td className="px-4 py-2.5"><p className="font-medium text-neutral-900">{p.company}</p><p className="text-[10px] text-neutral-400">{p.fundingStage}</p></td>
                           <td className="px-4 py-2.5"><IndustryPill industry={p.industry} /></td>
-                          <td className="px-4 py-2.5 text-neutral-600 dark:text-neutral-300">{p.location}</td>
+                          <td className="px-4 py-2.5 text-neutral-600">{p.location}</td>
                           <td className="px-4 py-2.5 text-right tabular-nums">{p.fitScore}</td>
                           <td className="px-4 py-2.5 text-right tabular-nums">{p.intentScore}</td>
                           <td className="px-4 py-2.5 text-right tabular-nums font-medium">{p.finalScore}</td>
@@ -1210,9 +1210,9 @@ function AutomationPanel({ prospects }: { prospects: Prospect[] }) {
 
           {/* Audit Log */}
           {auditLog.length > 0 && (
-            <div className="border-t border-neutral-200 dark:border-neutral-700 pt-4">
+            <div className="border-t border-neutral-200 pt-4">
               <h4 className="text-xs font-medium text-neutral-500 uppercase tracking-wider mb-2">Audit Trail</h4>
-              <div className="max-h-32 overflow-y-auto space-y-1 text-sm text-neutral-600 dark:text-neutral-300">
+              <div className="max-h-32 overflow-y-auto space-y-1 text-sm text-neutral-600">
                 {auditLog.map((entry, idx) => (
                   <div key={idx} className="flex gap-3">
                     <span className="text-neutral-400">{entry.time}</span>
@@ -1237,29 +1237,13 @@ export default function ProspectDiscoveryPage() {
   const [customProspects, setCustomProspects] = useState<Prospect[]>([]);
   const [deletedIds, setDeletedIds] = useState<Set<string>>(new Set());
   const [isScanning, setIsScanning] = useState(false);
-  // Dark mode with localStorage & system preference
-  const [darkMode, setDarkMode] = useState<boolean>(() => {
-    if (typeof window !== "undefined") {
-      const stored = localStorage.getItem("theme");
-      if (stored) return stored === "dark";
-      return window.matchMedia("(prefers-color-scheme: dark)").matches;
-    }
-    return false;
-  });
   const [selectedProspect, setSelectedProspect] = useState<Prospect | null>(null);
   const [detailModalOpen, setDetailModalOpen] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
-  // Persist dark mode
   useEffect(() => {
-    if (darkMode) {
-      document.documentElement.classList.add("dark");
-      localStorage.setItem("theme", "dark");
-    } else {
-      document.documentElement.classList.remove("dark");
-      localStorage.setItem("theme", "light");
-    }
-  }, [darkMode]);
+    document.documentElement.classList.remove("dark");
+  }, []);
 
   const baseProspects = useMemo(() => generateProspects(120, seed), [seed]);
   const allProspects = useMemo(() => {
@@ -1290,7 +1274,7 @@ export default function ProspectDiscoveryPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-neutral-50 to-neutral-100 dark:from-neutral-900 dark:to-neutral-800 text-neutral-900 dark:text-white transition-colors duration-300">
+    <div className="min-h-screen bg-gradient-to-br from-neutral-50 to-neutral-100 text-neutral-900 transition-colors duration-300">
       <div className="mx-auto max-w-7xl px-5 pt-28 pb-12">
         {/* Header */}
         <motion.div
@@ -1301,10 +1285,10 @@ export default function ProspectDiscoveryPage() {
         >
           <div className="flex items-center gap-2.5">
             <h1 className="font-menda-black text-2xl tracking-tight">Prospect Discovery Dashboard</h1>
-            <span className="rounded-md bg-neutral-200 dark:bg-neutral-700 px-2 py-0.5 text-[11px] text-neutral-600 dark:text-neutral-300">v2.0 · 434 scoring model</span>
+            <span className="rounded-md bg-neutral-200 px-2 py-0.5 text-[11px] text-neutral-600">v2.0 · 434 scoring model</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="flex gap-1 bg-white dark:bg-neutral-800 rounded-lg border border-neutral-200 dark:border-neutral-700 p-1">
+            <div className="flex gap-1 bg-white rounded-lg border border-neutral-200 p-1">
               {TABS.map((t: { id: Tab; label: string }) => (
                 <button
                   key={t.id}
@@ -1312,7 +1296,7 @@ export default function ProspectDiscoveryPage() {
                   className={`rounded-md px-3 py-1.5 text-[13px] transition-all ${
                     tab === t.id
                       ? "bg-[#1e3a5f] text-white shadow-sm"
-                      : "text-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-700"
+                      : "text-neutral-500 hover:bg-neutral-100"
                   }`}
                 >
                   {t.label}
@@ -1321,17 +1305,10 @@ export default function ProspectDiscoveryPage() {
             </div>
             <button
               onClick={() => setSeed(s => s + 1)}
-              className="rounded-md border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 px-3 py-1.5 text-[13px] text-neutral-500 transition-colors hover:bg-neutral-100 dark:hover:bg-neutral-700"
+              className="rounded-md border border-neutral-200 bg-white px-3 py-1.5 text-[13px] text-neutral-500 transition-colors hover:bg-neutral-100"
               title="Regenerate mock dataset"
             >
               ↻ Reseed
-            </button>
-            {/* Dark Mode Toggle */}
-            <button
-              onClick={() => setDarkMode(!darkMode)}
-              className="rounded-md border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 px-3 py-1.5 text-[13px] text-neutral-500 transition-colors hover:bg-neutral-100 dark:hover:bg-neutral-700"
-            >
-              {darkMode ? "☀️" : "🌙"}
             </button>
           </div>
         </motion.div>
@@ -1430,7 +1407,7 @@ export default function ProspectDiscoveryPage() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.5 }}
-          className="mt-8 text-center text-xs text-neutral-400 dark:text-neutral-500 border-t border-neutral-200 dark:border-neutral-700 pt-4"
+          className="mt-8 text-center text-xs text-neutral-400 border-t border-neutral-200 pt-4"
         >
           Data sourced from AI-powered web research, Crunchbase, LinkedIn, and public business registries.
           {customProspects.length > 0 && ` · ${customProspects.length} custom prospects added`}
