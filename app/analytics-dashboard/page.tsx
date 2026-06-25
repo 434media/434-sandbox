@@ -29,7 +29,7 @@ const TABS: { id: Tab; label: string }[] = [
   { id: "automation", label: "Automation" },
 ];
 
-/* ---- Shared UI components (unchanged) ---- */
+/* ---- Shared UI components ---- */
 function Card({ children, className = "" }: { children: React.ReactNode; className?: string }) {
   return (
     <motion.div
@@ -80,7 +80,7 @@ function IndustryPill({ industry }: { industry: string }) {
   return <span className={`inline-flex rounded-md px-2 py-0.5 text-[11px] ${cls}`}>{industry}</span>;
 }
 
-/* ---- Grade Panel (unchanged) ---- */
+/* ---- Grade Panel ---- */
 const GRADE_BAR_COLOR: Record<Grade, string> = {
   "A+": "bg-emerald-500",
   "A":  "bg-teal-400",
@@ -121,7 +121,7 @@ function GradePanel({ prospects }: { prospects: Prospect[] }) {
   );
 }
 
-/* ---- Score Histogram (unchanged) ---- */
+/* ---- Score Histogram ---- */
 function ScoreHistogram({ prospects }: { prospects: Prospect[] }) {
   const [field, setField] = useState<"finalScore" | "fitScore" | "intentScore">("finalScore");
   const bins = useMemo(() => scoreDistribution(prospects, 10, field), [prospects, field]);
@@ -149,7 +149,7 @@ function ScoreHistogram({ prospects }: { prospects: Prospect[] }) {
   );
 }
 
-/* ---- Scatter (with fixed dotVariants) ---- */
+/* ---- Scatter (fixed dotVariants) ---- */
 const SCATTER_GRADE_COLOR: Record<Grade, string> = { "A+": "#10b981", "A": "#14b8a6", "B": "#38bdf8", "C": "#fbbf24", "D": "#f87171" };
 
 function Scatter({ prospects }: { prospects: Prospect[] }) {
@@ -159,7 +159,7 @@ function Scatter({ prospects }: { prospects: Prospect[] }) {
   const py = (v: number) => B - (v / 100) * (B - T);
   const TX = px(55), TY = py(60);
 
-  // ✅ FIX: add `as const` to repeatType
+  // ✅ FIXED: added `as const` to repeatType and ease
   const dotVariants = {
     idle: (i: number) => ({
       y: 0,
@@ -169,7 +169,7 @@ function Scatter({ prospects }: { prospects: Prospect[] }) {
         repeat: Infinity,
         repeatType: "reverse" as const,
         delay: i * 0.02,
-        ease: "easeInOut",
+        ease: "easeInOut" as const,
       },
     }),
     hover: { y: -6, scale: 1.4, transition: { duration: 0.2 } },
@@ -239,7 +239,7 @@ function QualityPanel({ prospects }: { prospects: Prospect[] }) {
   );
 }
 
-/* ---- Top Prospects table (unchanged) ---- */
+/* ---- Top Prospects table ---- */
 function TopProspects({ prospects, onDeleteProspect }: { prospects: Prospect[]; onDeleteProspect: (id: string) => void }) {
   const [sortBy, setSortBy] = useState<"score" | "recent" | "deal">("score");
   const rows = useMemo(() => topProspects(prospects, 20, sortBy), [prospects, sortBy]);
@@ -294,7 +294,7 @@ function TopProspects({ prospects, onDeleteProspect }: { prospects: Prospect[]; 
   );
 }
 
-/* ---- Morning Summary with Scan button (unchanged) ---- */
+/* ---- Morning Summary with Scan button ---- */
 function MorningSummary({ k, onScan, isScanning }: { k: ReturnType<typeof kpis>; onScan: () => void; isScanning: boolean }) {
   return (
     <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }} className="mb-5 rounded-xl border border-emerald-200 bg-gradient-to-r from-emerald-50 to-teal-50 px-5 py-3.5 flex flex-wrap items-center justify-between gap-y-2">
@@ -317,7 +317,7 @@ function MorningSummary({ k, onScan, isScanning }: { k: ReturnType<typeof kpis>;
   );
 }
 
-/* ---- Search Panel (no API, uses local suggestions) ---- */
+/* ---- Search Panel (no API) ---- */
 function SearchPanel({ onAddProspect }: { onAddProspect: (p: Prospect) => void }) {
   const [query, setQuery] = useState("");
   const [suggestions, setSuggestions] = useState<string[]>([]);
@@ -326,7 +326,6 @@ function SearchPanel({ onAddProspect }: { onAddProspect: (p: Prospect) => void }
   const [isSearching, setIsSearching] = useState(false);
   const searchRef = useRef<HTMLDivElement>(null);
 
-  // Local suggestions – we'll generate from a fixed list (same as pipeline's fallback)
   const getLocalSuggestions = (q: string) => {
     const lower = q.toLowerCase();
     const all = [
@@ -351,7 +350,6 @@ function SearchPanel({ onAddProspect }: { onAddProspect: (p: Prospect) => void }
     return all.filter(name => name.toLowerCase().includes(lower)).slice(0, 10);
   };
 
-  // Simulate suggestion fetch
   useEffect(() => {
     if (query.length < 2) { setSuggestions([]); setShowSuggestions(false); return; }
     const results = getLocalSuggestions(query);
@@ -371,7 +369,6 @@ function SearchPanel({ onAddProspect }: { onAddProspect: (p: Prospect) => void }
     if (!query.trim()) return;
     setIsSearching(true);
     setShowSuggestions(false);
-    // Simulate async delay
     await new Promise(resolve => setTimeout(resolve, 800));
     const prospect = createProspectFromSearch(query.trim());
     setResult(prospect);
@@ -490,7 +487,6 @@ function SearchPanel({ onAddProspect }: { onAddProspect: (p: Prospect) => void }
                   </button>
                 </div>
 
-                {/* Contact Information */}
                 <div className="border-t border-neutral-200 pt-3">
                   <h4 className="text-sm font-medium text-neutral-700">📞 Contact Information</h4>
                   <div className="mt-2 grid grid-cols-1 gap-2 text-sm text-neutral-600 sm:grid-cols-2">
@@ -507,7 +503,6 @@ function SearchPanel({ onAddProspect }: { onAddProspect: (p: Prospect) => void }
                   )}
                 </div>
 
-                {/* Detailed Summary */}
                 <div className="border-t border-neutral-200 pt-3">
                   <details className="group">
                     <summary className="cursor-pointer text-sm font-medium text-neutral-700 hover:text-neutral-900">
@@ -525,7 +520,6 @@ function SearchPanel({ onAddProspect }: { onAddProspect: (p: Prospect) => void }
                   </details>
                 </div>
 
-                {/* Tailored Email */}
                 <div className="border-t border-neutral-200 pt-3">
                   <details className="group">
                     <summary className="cursor-pointer text-sm font-medium text-neutral-700 hover:text-neutral-900">
@@ -553,7 +547,7 @@ function SearchPanel({ onAddProspect }: { onAddProspect: (p: Prospect) => void }
   );
 }
 
-/* ---- Action Preview Modal (unchanged) ---- */
+/* ---- Action Preview Modal ---- */
 function ActionPreviewModal({ isOpen, onClose, onConfirm, prospects, grade, action }: {
   isOpen: boolean; onClose: () => void; onConfirm: () => void; prospects: Prospect[]; grade: Grade; action: string;
 }) {
@@ -609,7 +603,7 @@ function ActionPreviewModal({ isOpen, onClose, onConfirm, prospects, grade, acti
   );
 }
 
-/* ---- Automation Panel (unchanged) ---- */
+/* ---- Automation Panel ---- */
 function AutomationPanel({ prospects }: { prospects: Prospect[] }) {
   const [executing, setExecuting] = useState<{ [key: string]: boolean }>({});
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);

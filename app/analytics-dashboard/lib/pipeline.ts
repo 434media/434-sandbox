@@ -42,12 +42,10 @@ export interface Prospect {
   fundingStage: FundingStage;
   employees: EmployeeBand;
   discoveredAt: Date;
-  // Fit sub-scores
   hostsConferences: boolean;
   hostsMeetups: boolean;
   runsWebinars: boolean;
   communityBuilding: boolean;
-  // Intent — website signals
   outdatedWebsite: boolean;
   noVideoContent: boolean;
   noPodcast: boolean;
@@ -56,30 +54,24 @@ export interface Prospect {
   inactiveBlog: boolean;
   weakLinkedIn: boolean;
   noCaseStudies: boolean;
-  // Intent — hiring signals
   hiringDemandGen: boolean;
   hiringMktgManager: boolean;
   hiringGrowthMktg: boolean;
   hiringSalesDev: boolean;
   hiringBizDev: boolean;
-  // Intent — business signals
   fundingRound: boolean;
   productLaunch: boolean;
   acquisition: boolean;
   expansion: boolean;
   rebrand: boolean;
   newExecutive: boolean;
-  // Computed
   fitScore: number;
   intentScore: number;
   finalScore: number;
   grade: Grade;
-  estimatedDealValue: number; // USD
+  estimatedDealValue: number;
 }
 
-/**
- * Extended prospect returned from search, including summary, sources, and contact details.
- */
 export interface SearchedProspect extends Prospect {
   summary: string;
   sources: string[];
@@ -188,7 +180,7 @@ export function getAutomatedAction(grade: Grade): string {
   }
 }
 
-/* ---- mock data generator (deterministic, seeded) ---- */
+/* ---- mock data generator (deterministic) ---- */
 const INDUSTRIES: Industry[] = [
   "Cybersecurity", "Defense Technology", "Healthcare Tech", "Bioscience",
   "AI / SaaS", "Advanced Manufacturing", "Venture Capital", "Government Contractor",
@@ -293,7 +285,6 @@ export function generateProspects(count: number, seed: number): Prospect[] {
     const intentScore = calcIntentScore(base);
     const finalScore = calcFinalScore(fitScore, intentScore);
     const grade = getGrade(finalScore);
-
     const dealByGrade: Record<Grade, [number, number]> = {
       "A+": [40000, 80000],
       "A":  [20000, 45000],
@@ -317,57 +308,51 @@ function hashString(str: string): number {
   return Math.abs(hash);
 }
 
-/**
- * Generates a detailed human-readable summary explaining the scores.
- */
 function generateSummary(p: Prospect): string {
   const parts: string[] = [];
-
-  // ---- FIT explanation ----
   const fitParts: string[] = [];
-  fitParts.push(`Industry (${p.industry}) is a high-value sector, contributing strongly to Fit.`);
-  fitParts.push(`Location (${p.location}) aligns with our Texas focus, giving a solid fit bonus.`);
-  fitParts.push(`Funding stage (${p.fundingStage}) indicates ${p.fundingStage === 'Series B+' ? 'strong backing and maturity' : 'growth potential'}.`);
-  fitParts.push(`Employee size (${p.employees}) suggests ${p.employees === '10–50' ? 'agility and quick decision-making' : 'established operations with more resources'}.`);
+  fitParts.push(`Industry (${p.industry}) is a high-value sector.`);
+  fitParts.push(`Location (${p.location}) aligns with our Texas focus.`);
+  fitParts.push(`Funding stage (${p.fundingStage}) indicates ${p.fundingStage === 'Series B+' ? 'strong backing' : 'growth potential'}.`);
+  fitParts.push(`Employee size (${p.employees}) suggests ${p.employees === '10–50' ? 'agility' : 'established operations'}.`);
   if (p.hostsConferences || p.hostsMeetups || p.runsWebinars || p.communityBuilding) {
     const events = [];
     if (p.hostsConferences) events.push('conferences');
     if (p.hostsMeetups) events.push('meetups');
     if (p.runsWebinars) events.push('webinars');
     if (p.communityBuilding) events.push('community building');
-    fitParts.push(`Active in ${events.join(', ')} – demonstrates strong community engagement and thought leadership.`);
+    fitParts.push(`Active in ${events.join(', ')} – strong community engagement.`);
   } else {
-    fitParts.push('Limited community engagement signals – they may not be leveraging external events effectively.');
+    fitParts.push('Limited community engagement signals.');
   }
-  parts.push(`**Fit Score (${p.fitScore}/100)**: ${fitParts.join(' ')}`);
+  parts.push(`Fit score (${p.fitScore}/100): ${fitParts.join(' ')}`);
 
-  // ---- INTENT explanation ----
   const intentParts: string[] = [];
   const websiteIssues = [];
   if (p.outdatedWebsite) websiteIssues.push('outdated website');
   if (p.noVideoContent) websiteIssues.push('no video content');
   if (p.noPodcast) websiteIssues.push('no podcast');
-  if (p.noLeadCapture) websiteIssues.push('no lead capture forms');
-  if (p.weakSeo) websiteIssues.push('weak SEO performance');
+  if (p.noLeadCapture) websiteIssues.push('no lead capture');
+  if (p.weakSeo) websiteIssues.push('weak SEO');
   if (p.inactiveBlog) websiteIssues.push('inactive blog');
   if (p.weakLinkedIn) websiteIssues.push('weak LinkedIn presence');
   if (p.noCaseStudies) websiteIssues.push('no case studies');
   if (websiteIssues.length > 0) {
-    intentParts.push(`Website signals: ${websiteIssues.join(', ')} – these indicate a need for marketing and digital presence improvement.`);
+    intentParts.push(`Website signals: ${websiteIssues.join(', ')} – indicates need for marketing improvement.`);
   } else {
-    intentParts.push('Website is well-maintained with strong digital presence – a positive intent signal.');
+    intentParts.push('Website is well-maintained with strong digital presence.');
   }
 
   const hiring = [];
-  if (p.hiringDemandGen) hiring.push('Demand Gen');
-  if (p.hiringMktgManager) hiring.push('Marketing Manager');
-  if (p.hiringGrowthMktg) hiring.push('Growth Marketing');
-  if (p.hiringSalesDev) hiring.push('Sales Development');
-  if (p.hiringBizDev) hiring.push('Business Development');
+  if (p.hiringDemandGen) hiring.push('demand gen');
+  if (p.hiringMktgManager) hiring.push('marketing manager');
+  if (p.hiringGrowthMktg) hiring.push('growth marketing');
+  if (p.hiringSalesDev) hiring.push('sales development');
+  if (p.hiringBizDev) hiring.push('business development');
   if (hiring.length > 0) {
-    intentParts.push(`Hiring for ${hiring.join(', ')} – shows active investment in sales and marketing growth.`);
+    intentParts.push(`Hiring for ${hiring.join(', ')} – shows growth investment.`);
   } else {
-    intentParts.push('No active hiring signals for marketing/sales roles – they might be scaling down or relying on existing teams.');
+    intentParts.push('No active hiring signals detected.');
   }
 
   const business = [];
@@ -378,22 +363,15 @@ function generateSummary(p: Prospect): string {
   if (p.rebrand) business.push('rebrand');
   if (p.newExecutive) business.push('new executive hire');
   if (business.length > 0) {
-    intentParts.push(`Business events: ${business.join(', ')} – these create momentum and a potential need for external services.`);
+    intentParts.push(`Business events: ${business.join(', ')} – momentum and potential need for external services.`);
   } else {
-    intentParts.push('No major business events detected recently – they might be in a steady state.');
+    intentParts.push('No major business events recently.');
   }
-
-  parts.push(`**Intent Score (${p.intentScore}/100)**: ${intentParts.join(' ')}`);
-
-  // ---- FINAL ----
-  parts.push(`**Final Score (${p.finalScore}/100)** is weighted 60% fit + 40% intent. This gives a Grade of ${p.grade}.`);
-
-  return parts.join('\n\n');
+  parts.push(`Intent score (${p.intentScore}/100): ${intentParts.join(' ')}`);
+  parts.push(`Final score (${p.finalScore}/100) is weighted 60% fit + 40% intent. Grade: ${p.grade}.`);
+  return parts.join(' ');
 }
 
-/**
- * Generates a list of mock sources.
- */
 function generateSources(p: Prospect): string[] {
   const sources: string[] = ['AI-powered web research (simulated)'];
   if (p.outdatedWebsite || p.noVideoContent || p.noLeadCapture || p.weakSeo || p.inactiveBlog || p.weakLinkedIn || p.noCaseStudies) {
@@ -412,20 +390,14 @@ function generateSources(p: Prospect): string[] {
   return sources;
 }
 
-/**
- * Generate plausible contact information (mock, but consistent per company).
- */
 function generateContactInfo(company: string, location: Location, rng: () => number) {
-  // Email: clean company name -> domain
   const domain = company.toLowerCase().replace(/[^a-z0-9]/g, '');
   const email = `contact@${domain}.com`;
-  // Phone: US format
   const areaCode = pick(['210', '512', '214', '713', '817', '469', '830'], rng);
   const prefix = String(100 + Math.floor(rng() * 899));
   const line = String(1000 + Math.floor(rng() * 8999));
   const phone = `+1 (${areaCode}) ${prefix}-${line}`;
 
-  // Addresses: generate 1-3 locations, including the primary location
   const addressPool: Record<Location, string[]> = {
     "San Antonio": ["123 Alamo Plaza, San Antonio, TX 78205", "456 Riverwalk, San Antonio, TX 78207"],
     "Austin": ["789 Congress Ave, Austin, TX 78701", "1010 Barton Springs, Austin, TX 78704"],
@@ -442,28 +414,13 @@ function generateContactInfo(company: string, location: Location, rng: () => num
   return { email, phone, addresses };
 }
 
-/**
- * Generates a highly tailored email draft based on the prospect's attributes.
- */
 function generateTailoredEmail(p: Prospect): string {
-  const company = p.company;
-  const grade = p.grade;
-  const industry = p.industry;
-  const location = p.location;
-  const fitScore = p.fitScore;
-  const intentScore = p.intentScore;
-
-  // Start building the email
-  let body = `Subject: Strategic partnership opportunity for ${company}\n\n`;
-  body += `Dear ${company} team,\n\n`;
-  body += `I hope this message finds you well. We at 434 Media have been following ${company}'s impressive growth in the ${industry} space. `;
-  body += `Our analysis indicates that your company is a top-tier prospect (Grade ${grade}) with a strong fit (${fitScore}/100) and significant intent signals (${intentScore}/100).\n\n`;
-
-  // Personalize based on signals
+  let body = `Subject: Strategic partnership opportunity for ${p.company}\n\n`;
+  body += `Dear ${p.company} team,\n\n`;
+  body += `I hope this message finds you well. We at 434 Media have been following ${p.company}'s impressive growth in the ${p.industry} space. `;
+  body += `Our analysis indicates that your company is a top-tier prospect (Grade ${p.grade}) with a strong fit (${p.fitScore}/100) and significant intent signals (${p.intentScore}/100).\n\n`;
   const signals = [];
-  if (p.hiringDemandGen || p.hiringMktgManager || p.hiringGrowthMktg) {
-    signals.push('your recent hiring for marketing and growth roles');
-  }
+  if (p.hiringDemandGen || p.hiringMktgManager || p.hiringGrowthMktg) signals.push('your recent hiring for marketing and growth roles');
   if (p.fundingRound) signals.push('your recent funding round');
   if (p.productLaunch) signals.push('your upcoming product launch');
   if (p.expansion) signals.push('your expansion plans');
@@ -471,41 +428,25 @@ function generateTailoredEmail(p: Prospect): string {
   if (p.rebrand) signals.push('your rebranding efforts');
   if (p.newExecutive) signals.push('your new executive appointments');
   if (signals.length > 0) {
-    body += `We noticed ${signals.join(', ')}. `;
-    body += `These developments align perfectly with the services we offer to help companies like yours accelerate their market presence and optimize their lead generation.\n\n`;
+    body += `We noticed ${signals.join(', ')}. These developments align perfectly with the services we offer to help companies like yours accelerate their market presence and optimize their lead generation.\n\n`;
   } else {
     body += `We believe there is a strong synergy between our expertise and your current trajectory.\n\n`;
   }
-
-  // Add a specific mention about location/community
-  if (p.hostsConferences || p.hostsMeetups || p.runsWebinars) {
-    body += `We also see that you are active in community events and webinars – we can help you amplify those efforts and reach a wider audience.\n\n`;
-  }
-
-  // Call to action
-  body += `We would love to schedule a brief 15‑minute call to discuss how we can support your goals. `;
-  body += `Let me know a time that works for you.\n\n`;
-  body += `Looking forward to connecting,\n\n`;
-  body += `[Your Name]\n434 Media\n[Your Phone]\n[Your Email]`;
-
+  body += `We would love to schedule a brief 15‑minute call to discuss how we can support your goals. Let me know a time that works for you.\n\n`;
+  body += `Looking forward to connecting,\n\n[Your Name]\n434 Media\n[Your Phone]\n[Your Email]`;
   return body;
 }
 
-/**
- * Creates a prospect from a company name (deterministic mock).
- * Returns a fully scored prospect with summary, sources, and contact details.
- */
 export function createProspectFromSearch(companyName: string): SearchedProspect {
   const seed = hashString(companyName);
   const rng = seededRng(seed);
 
-  // Randomly pick attributes based on the seed
   const industry = pick(INDUSTRIES, rng);
   const location = pick(LOCATIONS, rng);
   const fundingStage = pick(FUNDING_STAGES, rng);
   const employees = pick(EMPLOYEE_BANDS, rng);
   const nameLen = companyName.length;
-  const bias = nameLen % 5; // bias for variety
+  const bias = nameLen % 5;
 
   const base = {
     id: `PR-SEARCH-${Date.now()}-${seed}`,
@@ -544,7 +485,6 @@ export function createProspectFromSearch(companyName: string): SearchedProspect 
   const intentScore = calcIntentScore(base);
   const finalScore = calcFinalScore(fitScore, intentScore);
   const grade = getGrade(finalScore);
-
   const dealByGrade: Record<Grade, [number, number]> = {
     "A+": [40000, 80000],
     "A":  [20000, 45000],
@@ -556,8 +496,6 @@ export function createProspectFromSearch(companyName: string): SearchedProspect 
   const estimatedDealValue = Math.round((lo + rng() * (hi - lo)) / 1000) * 1000;
 
   const prospect: Prospect = { ...base, fitScore, intentScore, finalScore, grade, estimatedDealValue };
-
-  // Generate the rich extra fields
   const summary = generateSummary(prospect);
   const sources = generateSources(prospect);
   const { email, phone, addresses } = generateContactInfo(companyName, location, rng);
@@ -566,7 +504,7 @@ export function createProspectFromSearch(companyName: string): SearchedProspect 
   return { ...prospect, summary, sources, contactEmail: email, contactPhone: phone, addresses, tailoredEmail };
 }
 
-/* ---- aggregation helpers (unchanged) ---- */
+/* ---- aggregation helpers ---- */
 export function kpis(prospects: Prospect[]) {
   const total = prospects.length;
   const aPlus = prospects.filter(p => p.grade === "A+");
