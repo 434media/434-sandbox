@@ -258,18 +258,6 @@ export default function IntakeFormPage() {
                 Your discovery intake has been received. The 434 Media team will review the details
                 and follow up with next steps shortly.
               </p>
-              <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={() => {
-                  setForm(initialForm);
-                  setSubmitted(false);
-                  formTopRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-                }}
-                className="mt-10 rounded-xl bg-white px-6 py-3 font-medium text-neutral-900"
-              >
-                Submit another
-              </motion.button>
             </motion.div>
           ) : (
             <motion.div
