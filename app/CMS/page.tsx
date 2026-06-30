@@ -315,6 +315,63 @@ function removeIntake(id: string) {
   );
 }
 
+const MOCK_INTAKES: IntakeRecord[] = [
+  {
+    id: "mock-txmx",
+    name: "TXMX Boxing — Championship Event",
+    objective: "Drive ticket sales and stream subscriptions for the upcoming championship",
+    geography: "San Antonio, TX",
+    createdAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
+    formData: {
+      objective: "Drive ticket sales and stream subscriptions for the TXMX championship event",
+      whyNow: "Championship in 6 weeks — ticket sales are lagging behind projections",
+      geography: "San Antonio, TX — with digital reach across DFW and Houston",
+      audience: "Hispanic sports fans 18–45, boxing enthusiasts, local fight community",
+      channels: ["Social Media", "Digital Video", "OOH"],
+      budget: "$25,000–$50,000",
+      competitors: "ESPN+ boxing events, local fight promotion companies",
+      usp: "Authentic Latino boxing culture, hometown heroes, family-friendly atmosphere",
+      notes: "Event date March 15. Bilingual creative required — English and Spanish.",
+    },
+  },
+  {
+    id: "mock-vemos",
+    name: "Vemos Vamos — South Texas Tourism",
+    objective: "Grow cultural tourism in South Texas and attract national visitors",
+    geography: "South Texas",
+    createdAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
+    formData: {
+      objective: "Grow cultural tourism footprint in South Texas and attract national visitors",
+      whyNow: "Spring break season is the highest travel demand window of the year",
+      geography: "South Texas — targeting travelers from Austin, Houston, and DFW",
+      audience: "Cultural travelers 25–55, heritage tourism seekers, families with disposable income",
+      channels: ["Social Media", "Influencer / Creator", "Search"],
+      budget: "$10,000–$25,000",
+      competitors: "Visit San Antonio, Texas Tourism Board campaigns",
+      usp: "Authentic under-the-radar destinations, community-led storytelling, local immersion",
+      notes: "Partner with local artists and restaurants for content. Spanish-language assets needed.",
+    },
+  },
+  {
+    id: "mock-canvas",
+    name: "Digital Canvas — B2B SaaS Launch",
+    objective: "Generate qualified leads for our new creative collaboration platform",
+    geography: "National",
+    createdAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
+    formData: {
+      objective: "Generate qualified leads and demo sign-ups for Digital Canvas v2.0 launch",
+      whyNow: "Product launch window is Q2 — competitors are spending heavily right now",
+      geography: "US National — targeting agencies in the top 10 markets",
+      audience: "Creative directors and marketing managers at agencies with 10–200 employees",
+      channels: ["Social Media", "Email / CRM", "Search"],
+      budget: "$50,000–$100,000",
+      competitors: "Figma, Canva for Teams, Adobe Creative Cloud for Teams",
+      usp: "AI-powered creative briefs, real-time collaboration, built specifically for agencies",
+      notes: "Emphasize ROI and time savings. Beta user case studies available as social proof.",
+    },
+  },
+];
+
 /* Template */
 function getTemplateData(): SlideData[] | null {
   try {
@@ -622,6 +679,7 @@ function DeckViewer({
   onEnhance,
   isEnhancing,
   extraActions,
+  label,
 }: {
   slides: Slide[];
   currentSlideIndex: number;
@@ -632,6 +690,7 @@ function DeckViewer({
   onEnhance: () => void;
   isEnhancing: boolean;
   extraActions?: ReactNode;
+  label?: string;
 }) {
   const paginate = useCallback(
     (d: number) => {
@@ -655,6 +714,17 @@ function DeckViewer({
 
   return (
     <div className="fixed inset-0 z-[9999] flex flex-col bg-neutral-950 text-white">
+      {label && (
+        <div className="shrink-0 flex items-center justify-between px-5 py-3 bg-neutral-900 border-b border-neutral-800">
+          <span className="font-geist-mono text-xs uppercase tracking-[0.2em] text-neutral-400">{label}</span>
+          <button
+            onClick={onBack}
+            className="flex items-center gap-2 rounded-full bg-white/10 hover:bg-white/20 px-4 py-1.5 text-sm font-medium transition-colors"
+          >
+            ✕ Close &amp; Exit
+          </button>
+        </div>
+      )}
       <div className="flex flex-1 items-center justify-center bg-neutral-900 md:bg-transparent md:p-4">
         <div className="@container relative h-full w-full overflow-hidden bg-white shadow-2xl md:aspect-video md:h-auto md:max-w-[min(100vw,calc((100vh-6rem)*16/9))] md:max-h-[calc(100vh-6rem)] md:rounded-lg md:ring-1 md:ring-white/10">
           <AnimatePresence initial={false} mode="wait">
@@ -1209,16 +1279,25 @@ export default function CMSPage() {
   const [templateIdx, setTemplateIdx] = useState(0);
   const [isSavingTemplate, setIsSavingTemplate] = useState(false);
 
+  /* Intake data toggle */
+  const [useIntakeData, setUseIntakeData] = useState(true);
+
   /* Search / filter */
   const [projectSearch, setProjectSearch] = useState("");
   const [projectStatusFilter, setProjectStatusFilter] = useState<Project["status"] | "all">("all");
   const [intakeSearch, setIntakeSearch] = useState("");
 
 
-  /* Load on mount */
+  /* Load on mount — seed mock intakes if library is empty */
   useEffect(() => {
     setProjects(getProjects());
-    setIntakes(getIntakes());
+    const existing = getIntakes();
+    if (existing.length === 0) {
+      MOCK_INTAKES.forEach(persistIntake);
+      setIntakes(getIntakes());
+    } else {
+      setIntakes(existing);
+    }
   }, []);
 
   /* Autosave (debounced 800 ms) */
@@ -1341,10 +1420,31 @@ export default function CMSPage() {
     setIsEnhancing(false);
   }, [isEnhancing, activeProject, intakes, previewSlides]);
 
+  /* ── Intake data toggle ── */
+  const handleToggleIntakeData = () => {
+    if (!activeProject) return;
+    const next = !useIntakeData;
+    const msg = next
+      ? "Re-apply client profile data? This will overwrite your current slide text."
+      : "Remove client profile data and reset to template defaults? Text edits will be lost.";
+    if (!confirm(msg)) return;
+    const form =
+      next && activeProject.intakeId
+        ? (intakes.find((i) => i.id === activeProject.intakeId)?.formData ?? emptyForm)
+        : emptyForm;
+    const fresh = applyTemplate(slidesToData(buildSlides(form)));
+    setSlideData((prev) =>
+      fresh.map((s) => ({ ...s, image: prev.find((p) => p.id === s.id)?.image ?? s.image }))
+    );
+    setUseIntakeData(next);
+  };
+
   /* ── Template ── */
   const handleEditTemplate = () => {
     const tplData = getTemplateData();
-    setTemplateSlides(tplData ? dataToSlides(tplData) : buildSlides(emptyForm));
+    // Discard stale stored data if it's missing any of the current 12 slides
+    const valid = tplData && SLIDE_META.every((m) => tplData.some((d) => d.id === m.id));
+    setTemplateSlides(valid ? dataToSlides(tplData!) : buildSlides(emptyForm));
     setTemplateIdx(0);
     setView("template");
   };
@@ -1414,6 +1514,7 @@ export default function CMSPage() {
   if (view === "template") {
     return (
       <DeckViewer
+        label="Template Editor"
         slides={templateSlides}
         currentSlideIndex={templateIdx}
         setCurrentSlideIndex={setTemplateIdx}
@@ -1538,6 +1639,22 @@ export default function CMSPage() {
               <motion.button
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
+                onClick={handleManualBuild}
+                className="rounded-2xl border-2 border-neutral-200 bg-white p-7 text-center hover:border-neutral-900 hover:shadow-lg transition-all group"
+              >
+                <div className="text-4xl mb-3 group-hover:scale-110 transition-transform">📄</div>
+                <h3 className="font-semibold text-xl mb-2">Start with a Template</h3>
+                <p className="text-sm text-neutral-500">
+                  Open the current template and fill in every slide yourself.
+                </p>
+                <p className="mt-4 text-xs font-geist-mono text-neutral-400 group-hover:text-neutral-700 transition-colors">
+                  Open blank editor →
+                </p>
+              </motion.button>
+
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
                 onClick={() => setView("intakes")}
                 className="rounded-2xl border-2 border-neutral-200 bg-white p-7 text-center hover:border-neutral-900 hover:shadow-lg transition-all group"
               >
@@ -1548,22 +1665,6 @@ export default function CMSPage() {
                 </p>
                 <p className="mt-4 text-xs font-geist-mono text-neutral-400 group-hover:text-neutral-700 transition-colors">
                   Browse profiles →
-                </p>
-              </motion.button>
-
-              <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={handleManualBuild}
-                className="rounded-2xl border-2 border-neutral-200 bg-white p-7 text-center hover:border-neutral-900 hover:shadow-lg transition-all group"
-              >
-                <div className="text-4xl mb-3 group-hover:scale-110 transition-transform">✏️</div>
-                <h3 className="font-semibold text-xl mb-2">Manual Build</h3>
-                <p className="text-sm text-neutral-500">
-                  Start from your current template and fill in every slide yourself.
-                </p>
-                <p className="mt-4 text-xs font-geist-mono text-neutral-400 group-hover:text-neutral-700 transition-colors">
-                  Open blank editor →
                 </p>
               </motion.button>
             </div>
@@ -1935,10 +2036,37 @@ export default function CMSPage() {
             })()}
 
             {/* Hint */}
-            <div className="bg-neutral-50 border border-neutral-100 rounded-xl px-4 py-3 mb-6 text-sm text-neutral-500">
+            <div className="bg-neutral-50 border border-neutral-100 rounded-xl px-4 py-3 mb-4 text-sm text-neutral-500">
               Expand each slide to edit its content. Changes are autosaved automatically.
               Click <strong className="text-neutral-700">Preview Deck</strong> to see the full presentation.
             </div>
+
+            {/* Intake data toggle — only shown for intake-sourced projects */}
+            {activeProject.sourceMode === "intake" && (
+              <div className="flex items-center gap-4 mb-6 px-4 py-3 bg-blue-50 border border-blue-100 rounded-xl">
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-neutral-800">Include client profile data</p>
+                  <p className="text-xs text-neutral-500 mt-0.5">
+                    {useIntakeData ? "Slide text is populated from the intake form." : "Showing template defaults — client data cleared."}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleToggleIntakeData}
+                  className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors duration-200 ${
+                    useIntakeData ? "bg-neutral-900" : "bg-neutral-300"
+                  }`}
+                  aria-checked={useIntakeData}
+                  role="switch"
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform duration-200 ${
+                      useIntakeData ? "translate-x-6" : "translate-x-1"
+                    }`}
+                  />
+                </button>
+              </div>
+            )}
 
             {/* Accordion */}
             <SlideAccordion slideData={slideData} onChange={setSlideData} />
