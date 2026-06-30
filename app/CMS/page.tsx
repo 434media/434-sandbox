@@ -8,6 +8,7 @@ import { motion, AnimatePresence } from "motion/react";
 /* ================================================================== */
 
 type FormState = {
+  companyName: string;
   objective: string;
   whyNow: string;
   geography: string;
@@ -86,6 +87,7 @@ const channelOptions = [
 const budgetOptions = ["Under $5k", "$5–15k", "$15–50k", "$50k+"];
 
 const requiredFields: (keyof FormState)[] = [
+  "companyName",
   "objective",
   "whyNow",
   "geography",
@@ -95,6 +97,7 @@ const requiredFields: (keyof FormState)[] = [
 ];
 
 const emptyForm: FormState = {
+  companyName: "",
   objective: "",
   whyNow: "",
   geography: "",
@@ -323,6 +326,7 @@ const MOCK_INTAKES: IntakeRecord[] = [
     geography: "San Antonio, TX",
     createdAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
     formData: {
+      companyName: "TXMX Boxing",
       objective: "Drive ticket sales and stream subscriptions for the TXMX championship event",
       whyNow: "Championship in 6 weeks — ticket sales are lagging behind projections",
       geography: "San Antonio, TX — with digital reach across DFW and Houston",
@@ -341,6 +345,7 @@ const MOCK_INTAKES: IntakeRecord[] = [
     geography: "South Texas",
     createdAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
     formData: {
+      companyName: "Vemos Vamos",
       objective: "Grow cultural tourism footprint in South Texas and attract national visitors",
       whyNow: "Spring break season is the highest travel demand window of the year",
       geography: "South Texas — targeting travelers from Austin, Houston, and DFW",
@@ -359,6 +364,7 @@ const MOCK_INTAKES: IntakeRecord[] = [
     geography: "National",
     createdAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
     formData: {
+      companyName: "Digital Canvas",
       objective: "Generate qualified leads and demo sign-ups for Digital Canvas v2.0 launch",
       whyNow: "Product launch window is Q2 — competitors are spending heavily right now",
       geography: "US National — targeting agencies in the top 10 markets",
@@ -490,9 +496,12 @@ function EditableText({
   return (
     <Tag
       onClick={() => setEditing(true)}
-      className={`cursor-text hover:bg-neutral-100/40 rounded px-1 transition-colors ${className}`}
+      className={`cursor-text group/et relative ${className}`}
     >
-      {value || <span className="text-neutral-400 italic text-sm">Click to edit…</span>}
+      {value || <span className="opacity-30">—</span>}
+      <span className="absolute -top-4 right-0 opacity-0 group-hover/et:opacity-100 transition-opacity text-[9px] font-geist-mono uppercase tracking-widest bg-black/70 text-white px-1.5 py-0.5 rounded pointer-events-none">
+        edit
+      </span>
     </Tag>
   );
 }
@@ -721,7 +730,7 @@ function DeckViewer({
             onClick={onBack}
             className="flex items-center gap-2 rounded-full bg-white/10 hover:bg-white/20 px-4 py-1.5 text-sm font-medium transition-colors"
           >
-            ✕ Close &amp; Exit
+            ← Back
           </button>
         </div>
       )}
@@ -1057,6 +1066,25 @@ function IntakeForm({
 
   return (
     <div className="space-y-6">
+      {/* 00 — Client Info */}
+      <div className="rounded-2xl border border-neutral-200 p-6">
+        <p className="font-geist-mono text-xs uppercase tracking-[0.2em] text-neutral-400 mb-5">
+          00 — Client Info
+        </p>
+        <label className="block">
+          <span className="mb-1.5 block font-geist-mono text-[10px] uppercase tracking-widest text-neutral-500">
+            Client / Company Name{err("companyName") && <span className="text-red-500 ml-1">*</span>}
+          </span>
+          <input
+            type="text"
+            className={fc("companyName")}
+            placeholder="e.g. TXMX Boxing, Vemos Vamos, Digital Canvas…"
+            value={form.companyName}
+            onChange={(e) => update("companyName", e.target.value)}
+          />
+        </label>
+      </div>
+
       {/* 01 — The Opportunity */}
       <div className="rounded-2xl border border-neutral-200 p-6">
         <p className="font-geist-mono text-xs uppercase tracking-[0.2em] text-neutral-400 mb-5">
@@ -1371,7 +1399,7 @@ export default function CMSPage() {
   const handleNewIntake = (form: FormState) => {
     const record: IntakeRecord = {
       id: uid(),
-      name: form.objective || "Untitled",
+      name: form.companyName || form.objective || "Untitled",
       objective: form.objective,
       geography: form.geography,
       formData: form,
@@ -1498,6 +1526,7 @@ export default function CMSPage() {
   if (view === "preview") {
     return (
       <DeckViewer
+        label="Deck Preview"
         slides={previewSlides}
         currentSlideIndex={previewIdx}
         setCurrentSlideIndex={setPreviewIdx}
@@ -2095,7 +2124,7 @@ function buildSlides(form: FormState): Slide[] {
       id: "title",
       image: "",
       texts: {
-        company: form.objective || "Your Company",
+        company: form.companyName || "Your Company",
         subtitle: `${form.geography || "Your Market"} · ${new Date().getFullYear()}`,
         tagline: "A 434 Media Proposal",
       },
