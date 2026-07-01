@@ -3,6 +3,11 @@
 import { useState, useRef, type ReactNode, useEffect, useCallback } from "react";
 import { motion, AnimatePresence, type Variants } from "motion/react";
 import { ScrambleText } from "@/components/ScrambleText";
+import {
+  buildSlides,
+  type Slide,
+  type SlideData,
+} from "@/lib/deck-generator/slides";
 
 /* ------------------------------------------------------------------ */
 /*  Config                                                            */
@@ -191,160 +196,6 @@ function CollapsibleSection({
 }
 
 /* ------------------------------------------------------------------ */
-/*  Slide components for the pitch deck (editable)                    */
-/* ------------------------------------------------------------------ */
-
-const HEAD = "font-ggx88 font-black uppercase tracking-tighter leading-[0.85] text-neutral-900";
-
-function EditableText({
-  value,
-  onChange,
-  className = "",
-  as = "p",
-}: {
-  value: string;
-  onChange: (newVal: string) => void;
-  className?: string;
-  as?: "p" | "h1" | "h2" | "h3" | "li" | "span";
-}) {
-  const [editing, setEditing] = useState(false);
-  const inputRef = useRef<HTMLTextAreaElement | HTMLInputElement>(null);
-
-  useEffect(() => {
-    if (editing && inputRef.current) {
-      inputRef.current.focus();
-      inputRef.current.select();
-    }
-  }, [editing]);
-
-  const handleBlur = () => {
-    setEditing(false);
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      setEditing(false);
-    }
-    if (e.key === "Escape") {
-      setEditing(false);
-    }
-  };
-
-  if (editing) {
-    const common = "w-full bg-transparent border-b border-neutral-900 outline-none text-inherit font-inherit resize-none";
-    if (as === "h1" || as === "h2" || as === "h3") {
-      return (
-        <input
-          ref={inputRef as any}
-          type="text"
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          onBlur={handleBlur}
-          onKeyDown={handleKeyDown}
-          className={`${common} text-inherit font-inherit ${className}`}
-        />
-      );
-    }
-    return (
-      <textarea
-        ref={inputRef as any}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        onBlur={handleBlur}
-        onKeyDown={handleKeyDown}
-        rows={3}
-        className={`${common} ${className}`}
-      />
-    );
-  }
-
-  const Component = as;
-  return (
-    <Component
-      onClick={() => setEditing(true)}
-      className={`cursor-text hover:bg-neutral-100/50 transition-colors rounded px-1 ${className}`}
-    >
-      {value || <span className="text-neutral-400 italic">Click to edit</span>}
-    </Component>
-  );
-}
-
-function EditableImage({
-  src,
-  onChange,
-  className = "",
-}: {
-  src?: string;
-  onChange: (dataUrl: string) => void;
-  className?: string;
-}) {
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  const handleClick = () => {
-    inputRef.current?.click();
-  };
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      if (ev.target?.result) {
-        onChange(ev.target.result as string);
-      }
-    };
-    reader.readAsDataURL(file);
-  };
-
-  return (
-    <div
-      className={`relative overflow-hidden bg-neutral-300 cursor-pointer group ${className}`}
-      onClick={handleClick}
-    >
-      {src ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={src}
-          alt="Slide image"
-          className="absolute inset-0 h-full w-full object-cover grayscale"
-        />
-      ) : (
-        <div
-          className="absolute inset-0"
-          style={{
-            background: "repeating-linear-gradient(135deg, #d4d4d4 0 14px, #c8c8c8 14px 28px)",
-          }}
-        />
-      )}
-      <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity">
-        <span className="text-white text-sm font-medium bg-black/60 px-3 py-1 rounded-full">
-          Change image
-        </span>
-      </div>
-      <input
-        ref={inputRef}
-        type="file"
-        accept="image/*"
-        className="hidden"
-        onChange={handleFileChange}
-      />
-    </div>
-  );
-}
-
-/* ------------------------------------------------------------------ */
-/*  Slide data structure                                              */
-/* ------------------------------------------------------------------ */
-
-type Slide = {
-  id: string;
-  node: (props: { slide: Slide; updateText: (key: string, val: string) => void; updateImage: (val: string) => void }) => ReactNode;
-  texts: Record<string, string>;
-  image: string;
-};
-
-/* ------------------------------------------------------------------ */
 /*  Deck Viewer                                                       */
 /* ------------------------------------------------------------------ */
 
@@ -385,7 +236,7 @@ function DeckViewer({
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [currentSlideIndex, slides.length]);
+  }, [currentSlideIndex, slides.length]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div className="fixed inset-0 z-[9999] flex flex-col bg-neutral-950 font-geist-sans text-white">
@@ -552,7 +403,7 @@ export default function UnifiedPage() {
     }
     setErrors(new Set());
 
-    const generated = buildSlides(form);
+    const generated = buildSlides(formToSlideData(form));
     setSlides(generated);
     setCurrentSlideIndex(0);
     setStep("deck");
@@ -566,7 +417,7 @@ export default function UnifiedPage() {
   const updateSlideText = (slideIdx: number, key: string, val: string) => {
     setSlides((prev) => {
       const updated = [...prev];
-      updated[slideIdx].texts[key] = val;
+      updated[slideIdx] = { ...updated[slideIdx], texts: { ...updated[slideIdx].texts, [key]: val } };
       return updated;
     });
   };
@@ -574,7 +425,7 @@ export default function UnifiedPage() {
   const updateSlideImage = (slideIdx: number, val: string) => {
     setSlides((prev) => {
       const updated = [...prev];
-      updated[slideIdx].image = val;
+      updated[slideIdx] = { ...updated[slideIdx], image: val };
       return updated;
     });
   };
@@ -822,678 +673,155 @@ export default function UnifiedPage() {
 }
 
 /* ------------------------------------------------------------------ */
+/*  Form → SlideData adapter                                          */
+/* ------------------------------------------------------------------ */
+
+function formToSlideData(form: FormState): SlideData[] {
+  const channels = form.channels.join(", ") || "Search, Social, Email";
+  return [
+    {
+      id: "title", image: "",
+      texts: {
+        company: form.objective || "Your Company",
+        subtitle: "Presented By : 434 Media",
+      },
+    },
+    {
+      id: "heard", image: "",
+      texts: {
+        challenge: "Heavy reliance on paid search\nLimited awareness outside existing demand channels\nNeed for scalable customer acquisition",
+        opportunity: "Growing consumer demand in your market\nStrong operation and expertise — a solid foundation\nAbility to scale rapidly into additional markets",
+        outcome: "Increase booked conversions — drive revenue\nReduce customer acquisition cost — improve efficiency\nBuild sustainable brand awareness — become the go-to\nCreate repeatable growth systems — scale with confidence",
+      },
+    },
+    {
+      id: "opportunity", image: "",
+      texts: {
+        headline: `${form.objective} – ${form.geography || "Target Market"}`,
+        bullets: `• Consumers expect increasingly on-demand solutions\n• Information is becoming consumer-controlled\n• Privacy and convenience continue to drive adoption\n• ${form.objective} can become a trusted destination`,
+      },
+    },
+    {
+      id: "strategy", image: "",
+      texts: {
+        line1: "Acquire consumers actively seeking answers.",
+        line2: "Building trust through education on relevant content.",
+        line3: "Curate repeat customers through ongoing engagement in order to retain established trust.",
+      },
+    },
+    {
+      id: "plan", image: "",
+      texts: {
+        channels,
+        budget: form.budget || "Under $5k",
+        geography: form.geography || "",
+        audience: form.audience || "",
+      },
+    },
+    {
+      id: "why", image: "",
+      texts: {
+        point1: form.usp || "Unique value proposition that resonates.",
+        point2: form.whyNow || "Timing is critical – and we're ready.",
+        point3: form.audience ? `${form.audience} is engaged and ready to convert.` : "Target audience is engaged and waiting.",
+      },
+    },
+    {
+      id: "audience", image: "",
+      texts: {
+        primary: form.audience || "Young Adults (18–34)",
+        geography: form.geography || "San Antonio",
+      },
+    },
+    {
+      id: "flow", image: "",
+      texts: {
+        steps: `Awareness\nSearch Intent\nWebsite Visit\nLead Form\nConsultation\nCustomer\nReferral`,
+      },
+    },
+    {
+      id: "success", image: "",
+      texts: {
+        title: `Success Story: ${form.objective || "Client Growth"} — Results Delivered`,
+        challenge: form.whyNow || "Client faced stagnant results and rising acquisition costs.",
+        solution: form.usp || "Deployed an integrated, audience-first media strategy across key channels.",
+        outcome: "Measurable reach and ecosystem participation that transformed awareness into action.",
+      },
+    },
+    {
+      id: "metrics", image: "",
+      texts: {
+        kpi1: "Cost Per Lead",
+        kpi2: "Return on Ad Spend",
+        kpi3: "Brand Search Lift",
+        budget: form.budget || "Under $5k",
+        channels,
+      },
+    },
+    {
+      id: "engagement", image: "",
+      texts: {
+        strategy: "• Market Research & Audience Development\n• Growth Planning & Brand Strategy\n• Competitive Intelligence",
+        acquisition: `• ${form.channels.length ? form.channels.join("\n• ") : "Paid Search\n• Paid Social\n• Display"}`,
+        optimization: "• Analytics & A/B Testing\n• Conversion Rate Optimization\n• Real-Time Reporting\n• Budget Pacing",
+      },
+    },
+    {
+      id: "nextsteps", image: "",
+      texts: {
+        step1: "Kick-off call to align on goals, timeline, and creative direction.",
+        step2: "Full media plan and strategy brief delivered within 5 business days.",
+        step3: "Campaign launch with live reporting dashboard and weekly check-ins.",
+        closing: form.notes && form.notes !== "Any additional context"
+          ? form.notes
+          : "The objective is to build a scalable, data-driven media strategy that drives real results.",
+      },
+    },
+  ];
+}
+
+/* ------------------------------------------------------------------ */
 /*  AI Enhancement function (mock – replace with real API)            */
 /* ------------------------------------------------------------------ */
 
 async function enhanceWithAI(form: FormState, slides: Slide[]): Promise<Slide[]> {
   await new Promise((resolve) => setTimeout(resolve, 1000));
 
-  const enhanced = slides.map((slide) => ({
-    ...slide,
-    texts: { ...slide.texts },
-  }));
-
-  for (let i = 0; i < enhanced.length; i++) {
-    const slide = enhanced[i];
-    const keys = Object.keys(slide.texts);
-    for (const key of keys) {
-      let current = slide.texts[key];
-      if (slide.id === "title" && key === "company") {
-        current = `🚀 ${form.objective || "Your Company"} – Unleashing Growth in ${form.geography || "your market"}`;
-      } else if (slide.id === "heard") {
-        if (key === "challenge") {
-          current = `• Heavy reliance on paid search — limiting organic growth.\n• Limited awareness outside existing demand channels — untapped potential.\n• Need for scalable customer acquisition — we have the solution.`;
-        } else if (key === "opportunity") {
-          current = `• Growing consumer demand for direct-access healthcare — the market is ready.\n• Strong operation and expertise — a solid foundation.\n• Ability to scale rapidly into additional markets — the time is now.`;
-        } else if (key === "outcome") {
-          current = `• Increase booked appointments — drive revenue.\n• Reduce customer acquisition cost — improve efficiency.\n• Build sustainable brand awareness — become the go-to.\n• Create repeatable growth systems — scale with confidence.`;
-        }
-      } else if (slide.id === "opportunity" && key === "headline") {
-        current = `${form.objective} – Not just a goal, a movement.`;
-      } else if (slide.id === "opportunity" && key === "bullets") {
-        current = `• Consumers increasingly expect healthcare on demand — we deliver.\n• Health information is becoming consumer controlled — we empower.\n• Privacy and convenience continue to drive adoption — we lead.\n• ${form.objective} can become a trusted destination — we build trust.`;
-      } else if (slide.id === "strategy") {
-        if (key === "line1") current = `Acquire consumers actively seeking answers — using ${form.channels.join(", ")}.`;
-        else if (key === "line2") current = `Build trust through education on relevant health content — informed decisions.`;
-        else if (key === "line3") current = `Curate repeat customers through ongoing engagement — loyalty that lasts.`;
-      } else if (slide.id === "plan" && key === "channels") {
-        current = form.channels.join(", ") || "Search, Social, Email";
-      } else if (slide.id === "why") {
-        if (key === "point1") current = form.usp || "Unique value proposition that resonates.";
-        else if (key === "point2") current = form.whyNow || "Timing is critical – and we're ready.";
-        else if (key === "point3") current = form.audience || "Target audience is engaged and waiting.";
-      } else if (slide.id === "audience") {
-        if (key === "primary") current = form.audience || "Young Adults (18–34) – high demand.";
-        else if (key === "geography") current = form.geography || "San Antonio – the perfect testbed.";
-      } else if (slide.id === "success") {
-        if (key === "title") current = `${form.objective} Success Story`;
-        else if (key === "challenge") current = form.whyNow || "Market need identified.";
-        else if (key === "solution") current = form.usp || "Our unique approach delivered results.";
-        else if (key === "outcome") current = "Measurable reach and ecosystem participation that transformed awareness into action.";
-      } else if (slide.id === "metrics") {
-        if (key === "budget") current = form.budget || "Under $5k";
-        else if (key === "channels") current = form.channels.join(", ") || "Search, Social, Email";
-      } else if (slide.id === "nextsteps" && key === "closing") {
-        current = form.notes || "The objective is to build a scalable consumer healthcare brand powered by information, trust, and access.";
-      }
-      slide.texts[key] = current || "Click to edit";
+  return slides.map((slide) => {
+    const texts = { ...slide.texts };
+    if (slide.id === "title" && texts.company) {
+      texts.company = `🚀 ${form.objective || "Your Company"} – Unleashing Growth in ${form.geography || "your market"}`;
+    } else if (slide.id === "heard") {
+      texts.challenge = `• Heavy reliance on paid search — limiting organic growth.\n• Limited awareness outside existing demand channels — untapped potential.\n• Need for scalable customer acquisition — we have the solution.`;
+      texts.opportunity = `• Growing consumer demand for direct-access solutions — the market is ready.\n• Strong operation and expertise — a solid foundation.\n• Ability to scale rapidly into additional markets — the time is now.`;
+      texts.outcome = `• Increase booked appointments — drive revenue.\n• Reduce customer acquisition cost — improve efficiency.\n• Build sustainable brand awareness — become the go-to.\n• Create repeatable growth systems — scale with confidence.`;
+    } else if (slide.id === "opportunity") {
+      texts.headline = `${form.objective} – Not just a goal, a movement.`;
+      texts.bullets = `• Consumers increasingly expect solutions on demand — we deliver.\n• Information is becoming consumer controlled — we empower.\n• Privacy and convenience continue to drive adoption — we lead.\n• ${form.objective} can become a trusted destination — we build trust.`;
+    } else if (slide.id === "strategy") {
+      texts.line1 = `Acquire consumers actively seeking answers — using ${form.channels.join(", ")}.`;
+      texts.line2 = `Build trust through education on relevant content — informed decisions.`;
+      texts.line3 = `Curate repeat customers through ongoing engagement — loyalty that lasts.`;
+    } else if (slide.id === "plan") {
+      texts.channels = form.channels.join(", ") || "Search, Social, Email";
+    } else if (slide.id === "why") {
+      texts.point1 = form.usp || "Unique value proposition that resonates.";
+      texts.point2 = form.whyNow || "Timing is critical – and we're ready.";
+      texts.point3 = form.audience || "Target audience is engaged and waiting.";
+    } else if (slide.id === "audience") {
+      texts.primary = form.audience || "Young Adults (18–34) – high demand.";
+      texts.geography = form.geography || "San Antonio – the perfect testbed.";
+    } else if (slide.id === "success") {
+      texts.title = `${form.objective} Success Story`;
+      texts.challenge = form.whyNow || "Market need identified.";
+      texts.solution = form.usp || "Our unique approach delivered results.";
+      texts.outcome = "Measurable reach and ecosystem participation that transformed awareness into action.";
+    } else if (slide.id === "metrics") {
+      texts.budget = form.budget || "Under $5k";
+      texts.channels = form.channels.join(", ") || "Search, Social, Email";
+    } else if (slide.id === "nextsteps") {
+      texts.closing = form.notes || "The objective is to build a scalable consumer brand powered by information, trust, and access.";
     }
-  }
-
-  return enhanced;
-}
-
-/* ------------------------------------------------------------------ */
-/*  Build slides from form data                                      */
-/* ------------------------------------------------------------------ */
-
-function buildSlides(form: FormState): Slide[] {
-  const slide = (
-    id: string,
-    image: string,
-    texts: Record<string, string>,
-    render: (props: { slide: Slide; updateText: (key: string, val: string) => void; updateImage: (val: string) => void }) => ReactNode
-  ): Slide => ({
-    id,
-    image,
-    texts,
-    node: render,
+    return { ...slide, texts };
   });
-
-  const defaultImages = {
-    title: "https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?q=80&w=2070&auto=format&fit=crop",
-    opportunity: "https://images.unsplash.com/photo-1551076805-e18690c5e561?q=80&w=2070&auto=format&fit=crop",
-    why: "https://images.unsplash.com/photo-1573164713988-8665fc963095?q=80&w=2069&auto=format&fit=crop",
-    audience: "https://images.unsplash.com/photo-1512428559087-560fa5ceab42?q=80&w=2070&auto=format&fit=crop",
-    flowLeft: "https://images.unsplash.com/photo-1551288049-bebda4e38f71?q=80&w=2070&auto=format&fit=crop",
-    flowRight: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?q=80&w=1976&auto=format&fit=crop",
-    success: "https://images.unsplash.com/photo-1576091160550-2173ff9e5eb3?q=80&w=2070&auto=format&fit=crop",
-    metrics: "https://images.unsplash.com/photo-1581056771107-24ca5f033842?q=80&w=2070&auto=format&fit=crop",
-    engagement: "https://images.unsplash.com/photo-1542744173-8e7e53415bb0?q=80&w=2070&auto=format&fit=crop",
-    plan: "https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?q=80&w=2021&auto=format&fit=crop",
-  };
-
-  // ---- SLIDE 01: TITLE ----
-  const titleSlide = slide(
-    "title",
-    defaultImages.title,
-    { company: form.objective || "Your Company" },
-    ({ slide, updateText, updateImage }) => (
-      <div className="flex min-h-full w-full flex-col md:flex-row">
-        <EditableImage
-          src={slide.image}
-          onChange={updateImage}
-          className="h-[40vh] min-h-[40vh] w-full shrink-0 md:h-full md:min-h-0 md:w-1/2"
-        />
-        <div className="flex w-full flex-1 flex-col items-center justify-center bg-white px-6 py-12 md:w-1/2 md:px-[3cqw] md:py-0">
-          <h1 className={`${HEAD} w-full text-center text-6xl md:text-[8cqw]`}>
-            <EditableText
-              value={slide.texts.company}
-              onChange={(v) => updateText("company", v)}
-              as="h1"
-              className="text-inherit"
-            />
-          </h1>
-          <p className="mt-4 text-sm font-bold uppercase tracking-[0.25em] text-neutral-900 md:mt-[2.5cqw] md:text-[1.3cqw]">
-            Presented By : 434 Media
-          </p>
-        </div>
-      </div>
-    )
-  );
-
-  // ---- SLIDE 02: WHAT WE HEARD ----
-  const heardSlide = slide(
-    "heard",
-    defaultImages.opportunity,
-    {
-      challenge: "Heavy reliance on paid search\nLimited awareness outside existing demand channels\nNeed for scalable customer acquisition",
-      opportunity: "Growing consumer demand for direct-access healthcare\nStrong operation and expertise\nAbility to scale rapidly into additional markets",
-      outcome: "Increase booked appointments\nReduce customer acquisition cost\nBuild sustainable brand awareness\nCreate repeatable growth systems",
-    },
-    ({ slide, updateText, updateImage }) => (
-      <div className="relative flex min-h-full w-full flex-col items-center justify-center bg-[#F8F9FA] px-6 py-12 md:px-[5cqw] md:py-0">
-        <Waveform />
-        <h2 className={`${HEAD} relative z-10 w-full text-center text-4xl md:text-[7cqw]`}>WHAT WE HEARD</h2>
-        <div className="relative z-10 mt-8 grid w-full grid-cols-1 gap-8 md:mt-[3cqw] md:grid-cols-3 md:gap-[3cqw]">
-          {[
-            { h: "Current Challenges", key: "challenge" },
-            { h: "Current Opportunities", key: "opportunity" },
-            { h: "Desired Outcomes", key: "outcome" },
-          ].map((col) => (
-            <div key={col.h} className="space-y-3 md:space-y-[1.4cqw]">
-              <h3 className="inline-block border-b-2 border-neutral-900 pb-1 text-lg font-bold text-neutral-900 md:pb-[0.3cqw] md:text-[1.7cqw]">
-                {col.h}
-              </h3>
-              <div className="list-disc space-y-2 pl-5 text-sm text-neutral-800 md:space-y-[0.8cqw] md:pl-[1.4cqw] md:text-[1.3cqw]">
-                <EditableText
-                  value={slide.texts[col.key]}
-                  onChange={(v) => updateText(col.key, v)}
-                  as="p"
-                  className="whitespace-pre-wrap"
-                />
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    )
-  );
-
-  // ---- SLIDE 03: OPPORTUNITY ----
-  const opportunitySlide = slide(
-    "opportunity",
-    defaultImages.opportunity,
-    {
-      headline: `${form.objective} – ${form.geography || "Target Market"}`,
-      bullets: `• Consumers increasingly expect healthcare on demand\n• Health information is becoming consumer controlled\n• Privacy and convenience continue to drive adoption\n• ${form.objective} can become a trusted destination`,
-    },
-    ({ slide, updateText, updateImage }) => (
-      <div className="flex min-h-full w-full flex-col-reverse bg-white md:flex-row">
-        <div className="flex w-full flex-1 flex-col justify-center px-6 py-12 md:w-1/2 md:px-[4cqw] md:py-0">
-          <h2 className={`${HEAD} mb-4 text-4xl md:mb-[2.5cqw] md:text-[5.5cqw]`}>OPPORTUNITY</h2>
-          <h3 className="mb-4 text-lg font-bold leading-snug text-neutral-900 md:mb-[2cqw] md:text-[1.6cqw]">
-            <EditableText
-              value={slide.texts.headline}
-              onChange={(v) => updateText("headline", v)}
-              as="h3"
-              className="text-inherit"
-            />
-          </h3>
-          <ul className="list-disc space-y-2 pl-5 text-xs font-bold uppercase leading-relaxed tracking-wider text-neutral-800 md:space-y-[0.9cqw] md:pl-[1.4cqw] md:text-[1.1cqw]">
-            <EditableText
-              value={slide.texts.bullets}
-              onChange={(v) => updateText("bullets", v)}
-              as="p"
-              className="whitespace-pre-wrap"
-            />
-          </ul>
-        </div>
-        <EditableImage
-          src={slide.image}
-          onChange={updateImage}
-          className="h-[40vh] min-h-[40vh] w-full shrink-0 md:h-full md:min-h-0 md:w-1/2"
-        />
-      </div>
-    )
-  );
-
-  // ---- SLIDE 04: STRATEGIC RECOMMENDATION ----
-  const strategySlide = slide(
-    "strategy",
-    defaultImages.plan,
-    {
-      line1: "Acquire consumers actively seeking answers.",
-      line2: "Building trust through education on relevant health content.",
-      line3: "Curate repeat customers through ongoing health engagement in order to retain established trust.",
-    },
-    ({ slide, updateText, updateImage }) => (
-      <div className="flex min-h-full w-full flex-col items-center justify-center bg-white px-6 py-12 md:flex-row md:px-[4cqw] md:py-0">
-        <div className="flex w-full flex-col justify-center text-center md:w-3/5 md:pr-[3cqw] md:text-left">
-          <h2 className={`${HEAD} mb-4 text-4xl md:mb-[2.5cqw] md:text-[5.5cqw]`}>
-            STRATEGIC
-            <br className="hidden md:block" /> RECOMMENDATION
-          </h2>
-          <div className="space-y-4 text-base font-medium text-neutral-800 md:space-y-[1.6cqw] md:text-[1.5cqw]">
-            <EditableText
-              value={slide.texts.line1}
-              onChange={(v) => updateText("line1", v)}
-              as="p"
-              className="text-inherit"
-            />
-            <EditableText
-              value={slide.texts.line2}
-              onChange={(v) => updateText("line2", v)}
-              as="p"
-              className="text-inherit"
-            />
-            <EditableText
-              value={slide.texts.line3}
-              onChange={(v) => updateText("line3", v)}
-              as="p"
-              className="text-inherit"
-            />
-          </div>
-        </div>
-        <div className="relative my-12 flex aspect-square w-[75vw] max-w-[320px] shrink-0 items-center justify-center md:my-0 md:w-[26cqw] md:max-w-none">
-          {(
-            [
-              ["Acquire", "top-0 left-1/2 -translate-x-1/2"],
-              ["Educate", "right-0 top-1/2 -translate-y-1/2"],
-              ["Retain", "bottom-0 left-1/2 -translate-x-1/2"],
-              ["Refer", "left-0 top-1/2 -translate-y-1/2"],
-            ] as const
-          ).map(([label, pos]) => (
-            <div
-              key={label}
-              className={`absolute ${pos} z-10 rounded-full bg-neutral-100 px-4 py-2 text-xs font-bold uppercase tracking-widest text-neutral-900 shadow-md md:px-[1.5cqw] md:py-[0.7cqw] md:text-[1.1cqw]`}
-            >
-              {label}
-            </div>
-          ))}
-          <div className="h-[50vw] w-[50vw] max-h-[220px] max-w-[220px] animate-[spin_22s_linear_infinite] rounded-full border-[0.5cqw] border-dashed border-neutral-300 md:h-[16cqw] md:w-[16cqw] md:max-h-none md:max-w-none" />
-        </div>
-      </div>
-    )
-  );
-
-  // ---- SLIDE 05: MARKETING PLAN ----
-  const planSlide = slide(
-    "plan",
-    defaultImages.plan,
-    {
-      channels: form.channels.join(", ") || "Search, Social, Email",
-      budget: form.budget || "Under $5k",
-    },
-    ({ slide, updateText, updateImage }) => (
-      <div className="flex min-h-full w-full flex-col items-center justify-center bg-white py-12 md:flex-row md:py-0">
-        <div className="mb-8 flex w-full flex-col justify-center px-6 text-center md:mb-0 md:h-full md:w-[44%] md:px-[4cqw] md:text-left">
-          <h2 className={`${HEAD} text-4xl md:text-[5.5cqw]`}>
-            RECOMMENDED
-            <br className="hidden md:block" /> MARKETING
-            <br className="hidden md:block" /> PLAN
-          </h2>
-          <p className="mt-2 text-sm text-neutral-600 md:mt-[1cqw] md:text-[1.3cqw]">
-            Budget: <EditableText value={slide.texts.budget} onChange={(v) => updateText("budget", v)} as="span" className="inline-block" />
-          </p>
-        </div>
-        <div className="flex w-full flex-col justify-center gap-8 px-6 md:w-[56%] md:gap-[2cqw] md:px-[4cqw]">
-          {[
-            { n: "Phase 1", t: "Demand Capture", items: ["Search", "Local SEO", "Landing Pages", "Conversion Optimization"] },
-            { n: "Phase 2", t: "Demand Expansion", items: ["Paid Social", "YouTube", "Dating App Advertising", "Influencer Partnerships"] },
-            { n: "Phase 3", t: "Brand Development", items: ["Content Marketing", "Employer Partnerships", "Public Relations", "Community Partnerships"] },
-          ].map((p) => (
-            <div key={p.n}>
-              <h3 className="text-xl font-black text-neutral-900 md:text-[1.7cqw]">{p.n}</h3>
-              <p className="text-base font-bold text-neutral-600 md:text-[1.4cqw]">{p.t}</p>
-              <ul className="mt-1 grid grid-cols-2 gap-x-4 gap-y-1 pl-4 text-sm text-neutral-800 md:mt-[0.4cqw] md:gap-x-[1.5cqw] md:gap-y-[0.3cqw] md:pl-[1.2cqw] md:text-[1.25cqw]">
-                {p.items.map((it) => (
-                  <li key={it} className="list-disc">{it}</li>
-                ))}
-              </ul>
-            </div>
-          ))}
-        </div>
-      </div>
-    )
-  );
-
-  // ---- SLIDE 06: WHY THIS MATTERS ----
-  const whySlide = slide(
-    "why",
-    defaultImages.why,
-    {
-      point1: form.usp || "Unique value proposition",
-      point2: form.whyNow || "Timing is critical",
-      point3: form.audience || "Target audience is ready",
-    },
-    ({ slide, updateText, updateImage }) => (
-      <div className="flex min-h-full w-full flex-col">
-        <div className="flex flex-1 flex-col items-center justify-center gap-8 bg-[#F8F9FA] px-6 py-12 md:gap-[2.5cqw] md:px-[5cqw] md:py-0">
-          <h2 className={`${HEAD} w-full text-center text-4xl md:text-[7cqw]`}>WHY THIS MATTERS</h2>
-          <div className="grid w-full grid-cols-1 gap-6 text-center md:grid-cols-3 md:gap-[3cqw]">
-            {["point1", "point2", "point3"].map((key) => (
-              <p key={key} className="px-2 text-base font-bold text-neutral-900 md:px-[1.5cqw] md:text-[1.4cqw]">
-                <EditableText
-                  value={slide.texts[key]}
-                  onChange={(v) => updateText(key, v)}
-                  as="p"
-                  className="text-inherit"
-                />
-              </p>
-            ))}
-          </div>
-        </div>
-        <EditableImage
-          src={slide.image}
-          onChange={updateImage}
-          className="h-[34vh] min-h-[34vh] w-full shrink-0 md:h-[34%] md:min-h-0"
-        />
-      </div>
-    )
-  );
-
-  // ---- SLIDE 07: AUDIENCE PRIORITIZATION ----
-  const audienceSlide = slide(
-    "audience",
-    defaultImages.audience,
-    {
-      primary: form.audience || "Young Adults (18–34)",
-      geography: form.geography || "San Antonio",
-    },
-    ({ slide, updateText, updateImage }) => (
-      <div className="flex min-h-full w-full flex-col items-center bg-[#F8F9FA] md:flex-row">
-        <EditableImage
-          src={slide.image}
-          onChange={updateImage}
-          className="h-[35vh] min-h-[35vh] w-full shrink-0 shadow-xl md:h-[84%] md:min-h-0 md:w-1/2 md:rounded-r-[3cqw]"
-        />
-        <div className="flex w-full flex-1 flex-col justify-center gap-6 px-6 py-12 md:w-1/2 md:gap-[2cqw] md:px-[4cqw] md:py-0">
-          <h2 className={`${HEAD} text-center text-3xl md:text-left md:text-[4.8cqw]`}>
-            AUDIENCE
-            <br className="hidden md:block" /> PRIORITIZATION
-          </h2>
-          <div className="space-y-4 md:space-y-[1.4cqw]">
-            <div>
-              <h3 className="text-lg font-black text-neutral-900 md:text-[1.6cqw]">Primary Audience</h3>
-              <p className="text-sm text-neutral-700 md:text-[1.3cqw]">
-                <EditableText
-                  value={slide.texts.primary}
-                  onChange={(v) => updateText("primary", v)}
-                  as="p"
-                  className="text-inherit"
-                />
-              </p>
-            </div>
-            <div>
-              <h3 className="text-lg font-black text-neutral-900 md:text-[1.6cqw]">Geography</h3>
-              <p className="text-sm text-neutral-700 md:text-[1.3cqw]">
-                <EditableText
-                  value={slide.texts.geography}
-                  onChange={(v) => updateText("geography", v)}
-                  as="p"
-                  className="text-inherit"
-                />
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-    )
-  );
-
-  // ---- SLIDE 08: CUSTOMER FLOW JOURNEY ----
-  const flowSlide = slide(
-    "flow",
-    defaultImages.flowLeft,
-    {
-      steps: 'Step 1: Consumer searches: "STD testing near me"\nStep 2: Discovers The Lab Cafe\nStep 3: Books Appointment\nStep 4: Receives Information\nStep 5: Returns For Additional Services',
-    },
-    ({ slide, updateText, updateImage }) => (
-      <div className="flex min-h-full w-full flex-col bg-neutral-900 md:flex-row">
-        <EditableImage
-          src={slide.image}
-          onChange={updateImage}
-          className="hidden w-1/4 shrink-0 opacity-40 md:block"
-        />
-        <div className="z-10 flex w-full flex-1 flex-col justify-center bg-[#F8F9FA] px-6 py-12 shadow-2xl md:w-2/4 md:px-[4cqw] md:py-0">
-          <h2 className={`${HEAD} mb-8 text-center text-4xl md:mb-[3cqw] md:text-right md:text-[5.5cqw]`}>
-            CUSTOMER
-            <br />
-            FLOW
-            <br />
-            JOURNEY
-          </h2>
-          <div className="space-y-4 text-center text-base md:space-y-[1.4cqw] md:text-right md:text-[1.5cqw]">
-            <EditableText
-              value={slide.texts.steps}
-              onChange={(v) => updateText("steps", v)}
-              as="p"
-              className="whitespace-pre-wrap"
-            />
-          </div>
-        </div>
-        <EditableImage
-          src={slide.image}
-          onChange={updateImage}
-          className="hidden w-1/4 shrink-0 opacity-60 md:block"
-        />
-      </div>
-    )
-  );
-
-  // ---- SLIDE 09: SUCCESS STORIES ----
-  const successSlide = slide(
-    "success",
-    defaultImages.success,
-    {
-      title: form.objective || "Success Story",
-      challenge: form.whyNow || "Market need",
-      solution: form.usp || "Unique approach",
-      outcome: "Measurable reach and ecosystem participation that transformed awareness into action",
-    },
-    ({ slide, updateText, updateImage }) => (
-      <div className="flex min-h-full w-full flex-col bg-[#F8F9FA] md:flex-row">
-        <EditableImage
-          src={slide.image}
-          onChange={updateImage}
-          className="h-[40vh] min-h-[40vh] w-full shrink-0 md:h-full md:min-h-0 md:w-1/2"
-        />
-        <div className="flex w-full flex-1 flex-col justify-center px-6 py-12 md:w-1/2 md:px-[4cqw] md:py-0">
-          <h2 className={`${HEAD} mb-4 text-4xl md:mb-[1.4cqw] md:text-[6.5cqw]`}>
-            SUCCESS
-            <br />
-            STORIES
-          </h2>
-          <p className="mb-4 inline-block self-start border-b-2 border-neutral-900 pb-1 text-base font-bold text-neutral-800 md:mb-[1.6cqw] md:pb-[0.3cqw] md:text-[1.5cqw]">
-            <EditableText
-              value={slide.texts.title}
-              onChange={(v) => updateText("title", v)}
-              as="p"
-              className="text-inherit"
-            />
-          </p>
-          <ul className="list-disc space-y-2 pl-5 text-sm text-neutral-800 md:space-y-[0.8cqw] md:pl-[1.4cqw] md:text-[1.25cqw]">
-            <li>969K+ Views</li>
-            <li>403K+ Accounts Reached</li>
-            <li>1,600+ Participants Engaged</li>
-            <li>
-              <span className="font-bold">Challenge:</span>{" "}
-              <EditableText
-                value={slide.texts.challenge}
-                onChange={(v) => updateText("challenge", v)}
-                as="span"
-                className="inline-block"
-              />
-            </li>
-            <li>
-              <span className="font-bold">Solution:</span>{" "}
-              <EditableText
-                value={slide.texts.solution}
-                onChange={(v) => updateText("solution", v)}
-                as="span"
-                className="inline-block"
-              />
-            </li>
-            <li>
-              <span className="font-bold">Outcome:</span>{" "}
-              <EditableText
-                value={slide.texts.outcome}
-                onChange={(v) => updateText("outcome", v)}
-                as="span"
-                className="inline-block"
-              />
-            </li>
-          </ul>
-        </div>
-      </div>
-    )
-  );
-
-  // ---- SLIDE 10: WHAT SUCCESS LOOKS LIKE ----
-  const metricsSlide = slide(
-    "metrics",
-    defaultImages.metrics,
-    {
-      budget: form.budget || "Under $5k",
-      channels: form.channels.join(", ") || "Search, Social, Email",
-    },
-    ({ slide, updateText, updateImage }) => (
-      <div className="flex min-h-full w-full flex-col-reverse items-center bg-[#F8F9FA] md:flex-row">
-        <div className="flex w-full flex-1 flex-col justify-center px-6 py-12 md:w-3/5 md:px-[4cqw] md:pr-[3cqw] md:py-0">
-          <h2 className={`${HEAD} mb-6 text-center text-4xl md:mb-[2.5cqw] md:text-left md:text-[5.5cqw]`}>
-            WHAT
-            <br />
-            SUCCESS
-            <br />
-            LOOKS LIKE
-          </h2>
-          <div className="grid grid-cols-1 gap-6 text-sm text-neutral-800 sm:grid-cols-2 md:gap-[2cqw] md:text-[1.3cqw]">
-            {[
-              ["Marketing Metrics", ["Website Traffic", "Lead Volume", "Cost Per Lead", "Cost Per Appointment"]],
-              ["Business Metrics", ["Customer Acquisition Cost (CAC)", "Revenue Per Customer", "Lifetime Value (LTV)", "Repeat Visit Rate"]],
-              ["Executive Metrics", ["Market Expansion Readiness", "Channel ROI", "Growth Efficiency"]],
-            ].map(([h, items]) => (
-              <div key={h as string}>
-                <h3 className="mb-2 inline-block border-b-2 border-neutral-900 pb-1 font-bold text-neutral-900 md:mb-[0.6cqw] md:pb-[0.2cqw]">
-                  {h as string}
-                </h3>
-                <ul className="list-disc space-y-1 pl-5 md:space-y-[0.3cqw] md:pl-[1.4cqw]">
-                  {(items as string[]).map((it) => (
-                    <li key={it}>{it}</li>
-                  ))}
-                </ul>
-              </div>
-            ))}
-          </div>
-        </div>
-        <EditableImage
-          src={slide.image}
-          onChange={updateImage}
-          className="h-[40vh] min-h-[40vh] w-full shrink-0 shadow-2xl md:h-[80%] md:min-h-0 md:w-2/5"
-        />
-      </div>
-    )
-  );
-
-  // ---- SLIDE 11: RECOMMENDED ENGAGEMENT ----
-  const engagementSlide = slide(
-    "engagement",
-    defaultImages.engagement,
-    {
-      channels: form.channels.join(", ") || "Search, Social, Email",
-    },
-    ({ slide, updateText, updateImage }) => (
-      <div className="flex min-h-full w-full flex-col bg-[#F8F9FA] md:flex-row">
-        <EditableImage
-          src={slide.image}
-          onChange={updateImage}
-          className="h-[40vh] min-h-[40vh] w-full shrink-0 md:h-full md:min-h-0 md:w-1/2"
-        />
-        <div className="flex w-full flex-1 flex-col justify-center px-6 py-12 md:w-1/2 md:px-[4cqw] md:py-0">
-          <h2 className={`${HEAD} mb-6 text-4xl md:mb-[2.5cqw] md:text-[5cqw]`}>
-            RECOMMENDED
-            <br />
-            ENGAGEMENT
-          </h2>
-          <div className="grid grid-cols-1 gap-x-8 gap-y-6 sm:grid-cols-2 md:gap-x-[2.5cqw] md:gap-y-[2cqw]">
-            {[
-              ["Strategy", ["Market Research", "Audience Development", "Growth Planning"]],
-              ["Acquisition", ["Media Buying", "SEO", "Content Development"]],
-              ["Optimization", ["Analytics", "Testing", "Conversion Improvements"]],
-            ].map(([h, items]) => (
-              <div key={h as string}>
-                <h3 className="mb-2 inline-block border-b-2 border-neutral-900 pb-1 text-lg font-black text-neutral-900 md:mb-[0.6cqw] md:pb-[0.2cqw] md:text-[1.6cqw]">
-                  {h as string}
-                </h3>
-                <ul className="list-disc space-y-1 pl-5 text-sm text-neutral-700 marker:text-neutral-900 md:space-y-[0.4cqw] md:pl-[1.4cqw] md:text-[1.25cqw]">
-                  {(items as string[]).map((it) => (
-                    <li key={it}>{it}</li>
-                  ))}
-                </ul>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    )
-  );
-
-  // ---- SLIDE 12: NEXT STEPS ----
-  const nextStepsSlide = slide(
-    "nextsteps",
-    defaultImages.engagement,
-    {
-      closing: form.notes || "The objective is to build a scalable consumer healthcare brand powered by information, trust, and access.",
-      competitor: form.competitors || "Other players",
-    },
-    ({ slide, updateText, updateImage }) => (
-      <div className="flex min-h-full w-full flex-col items-center justify-center bg-white px-6 py-12 md:flex-row md:px-[4cqw] md:py-0">
-        <div className="flex w-full flex-col justify-center md:w-2/5 md:pr-[2cqw]">
-          <h2 className={`${HEAD} mb-8 text-center text-4xl md:mb-[2.5cqw] md:text-left md:text-[6cqw]`}>NEXT STEPS</h2>
-          <div className="flex aspect-[4/3] w-full max-w-[300px] self-center items-end justify-center rounded-2xl bg-neutral-50 shadow-inner md:max-w-none md:rounded-[2cqw]">
-            <div className="flex h-full items-end justify-center gap-2 pb-6 md:gap-[1cqw] md:pb-[3cqw]">
-              {["h-[18%]", "h-[34%]", "h-[52%]", "h-[70%]", "h-[88%]"].map((h, i) => (
-                <div
-                  key={i}
-                  className={`w-3 md:w-[3cqw] ${h} shadow-md`}
-                  style={{ background: `hsl(0 0% ${60 - i * 12}%)` }}
-                />
-              ))}
-            </div>
-          </div>
-        </div>
-        <div className="mt-12 flex w-full flex-col items-center justify-center text-center md:mt-0 md:w-3/5">
-          <div className="flex w-full flex-col items-center space-y-4 md:space-y-[0.6cqw]">
-            {[
-              ["Discovery Alignment", "Finalize goals and KPIs"],
-              ["Launch Phase 1", "Demand Capture Campaigns"],
-              ["Measure & Optimize", "Validate CAC and Conversion Rates"],
-              ["Scale Into New Markets", "Florida · Additional Texas Markets · National Expansion"],
-            ].map(([h, p], i, arr) => (
-              <div key={h} className="flex flex-col items-center">
-                <h3 className="text-lg font-bold text-neutral-900 md:text-[1.6cqw]">{h}</h3>
-                <p className="text-sm text-neutral-600 md:text-[1.25cqw]">{p}</p>
-                {i < arr.length - 1 && (
-                  <span className="my-2 text-xl font-bold text-neutral-400 md:my-[0.3cqw] md:text-[1.5cqw]">↓</span>
-                )}
-              </div>
-            ))}
-          </div>
-          <div className="mt-8 flex w-full max-w-[80vw] flex-col items-center border-t-2 border-neutral-900 pt-6 md:mt-[2.5cqw] md:max-w-[50cqw] md:pt-[1.6cqw]">
-            <p className="mb-2 text-xs font-bold uppercase tracking-widest text-neutral-500 md:mb-[0.5cqw] md:text-[1.1cqw]">
-              Closing Statement
-            </p>
-            <p className="text-lg font-bold text-neutral-900 md:text-[1.5cqw]">
-              The objective is not simply to generate tests.
-            </p>
-            <p className="mt-2 text-base font-medium leading-relaxed text-neutral-900 md:mt-[0.5cqw] md:text-[1.4cqw]">
-              <EditableText
-                value={slide.texts.closing}
-                onChange={(v) => updateText("closing", v)}
-                as="p"
-                className="text-inherit"
-              />
-            </p>
-          </div>
-        </div>
-      </div>
-    )
-  );
-
-  return [
-    titleSlide,
-    heardSlide,
-    opportunitySlide,
-    strategySlide,
-    planSlide,
-    whySlide,
-    audienceSlide,
-    flowSlide,
-    successSlide,
-    metricsSlide,
-    engagementSlide,
-    nextStepsSlide,
-  ];
-}
-
-/* ------------------------------------------------------------------ */
-/*  Helper: Waveform                                                  */
-/* ------------------------------------------------------------------ */
-
-function Waveform() {
-  const bars = Array.from({ length: 90 });
-  return (
-    <svg
-      className="pointer-events-none absolute inset-0 h-full w-full opacity-[0.06]"
-      preserveAspectRatio="none"
-      viewBox="0 0 900 300"
-      aria-hidden
-    >
-      {bars.map((_, i) => {
-        const h = 20 + Math.abs(Math.sin(i * 0.7) * Math.cos(i * 0.3)) * 240;
-        return <rect key={i} x={i * 10} y={(300 - h) / 2} width={4} height={h} fill="#111" />;
-      })}
-    </svg>
-  );
 }

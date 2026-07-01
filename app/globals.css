@@ -39,6 +39,37 @@ body {
   text-rendering: optimizeLegibility;
 }
 
+body.deck-export-mode {
+  margin: 0;
+  background: white;
+}
+
+body.deck-export-mode header,
+body.deck-export-mode footer,
+body.deck-export-mode nav {
+  display: none !important;
+}
+
+body.deck-export-mode > main {
+  flex: none;
+}
+
+.deck-export-page {
+  width: 1600px;
+}
+
+.deck-export-slide {
+  width: 1600px;
+  height: 900px;
+  position: relative;
+  overflow: hidden;
+}
+
+.deck-export-slide .cursor-text,
+.deck-export-slide .cursor-pointer {
+  cursor: default;
+}
+
 /* Prevent horizontal overflow on all pages */
 html, body {
   overflow-x: hidden;
