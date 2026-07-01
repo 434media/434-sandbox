@@ -17,6 +17,7 @@ export type SlideData = {
   texts: Record<string, string>;
   image: string;
   imagePosition?: { x: number; y: number };
+  fontScale?: number;
 };
 
 export type Slide = {
@@ -30,6 +31,7 @@ export type Slide = {
   texts: Record<string, string>;
   image: string;
   imagePosition: { x: number; y: number };
+  fontScale: number;
 };
 
 /* ================================================================== */
@@ -191,11 +193,14 @@ export function EditableText({
   onChange,
   className = "",
   as: Tag = "p",
+  scale = 1,
 }: {
   value: string;
   onChange: (newVal: string) => void;
   className?: string;
   as?: "p" | "h1" | "h2" | "h3" | "li" | "span";
+  /** Multiplier applied to this field's rendered (non-editing) font size, relative to its own template size. */
+  scale?: number;
 }) {
   const [editing, setEditing] = useState(false);
   const inputRef = useRef<HTMLTextAreaElement | HTMLInputElement>(null);
@@ -242,12 +247,13 @@ export function EditableText({
   }
 
   const Component = Tag;
+  const content = value || <span className="text-neutral-400 italic">Click to edit</span>;
   return (
     <Component
       onClick={() => setEditing(true)}
       className={`cursor-text hover:bg-neutral-100/50 transition-colors rounded px-1 ${className}`}
     >
-      {value || <span className="text-neutral-400 italic">Click to edit</span>}
+      {scale !== 1 ? <span style={{ fontSize: `${scale}em` }}>{content}</span> : content}
     </Component>
   );
 }
@@ -305,6 +311,7 @@ export function buildSlides(data: SlideData[]): Slide[] {
       image: img(d, fallbackImageKey),
       imagePosition: d.imagePosition ?? { x: 50, y: 50 },
       texts: { ...d.texts },
+      fontScale: d.fontScale ?? 1,
       node,
     };
   };
@@ -327,6 +334,7 @@ export function buildSlides(data: SlideData[]): Slide[] {
               onChange={(v) => updateText("company", v)}
               as="h1"
               className="text-inherit"
+              scale={slide.fontScale}
             />
           </div>
           <p
@@ -338,6 +346,7 @@ export function buildSlides(data: SlideData[]): Slide[] {
               onChange={(v) => updateText("subtitle", v)}
               as="span"
               className="text-inherit"
+              scale={slide.fontScale}
             />
           </p>
         </div>
@@ -369,6 +378,7 @@ export function buildSlides(data: SlideData[]): Slide[] {
                 onChange={(v) => updateText(col.key, v)}
                 as="p"
                 className="whitespace-pre-wrap"
+                scale={slide.fontScale}
               />
             </div>
           </div>
@@ -388,6 +398,7 @@ export function buildSlides(data: SlideData[]): Slide[] {
             onChange={(v) => updateText("headline", v)}
             as="h3"
             className="text-inherit"
+            scale={slide.fontScale}
           />
         </div>
         <div className="text-xs font-bold uppercase leading-relaxed tracking-wider text-neutral-800 md:text-[1.1cqw]">
@@ -396,6 +407,7 @@ export function buildSlides(data: SlideData[]): Slide[] {
             onChange={(v) => updateText("bullets", v)}
             as="p"
             className="whitespace-pre-wrap"
+            scale={slide.fontScale}
           />
         </div>
       </div>
@@ -418,9 +430,9 @@ export function buildSlides(data: SlideData[]): Slide[] {
           <br className="hidden md:block" /> RECOMMENDATION
         </h2>
         <div className="space-y-4 text-base font-medium text-neutral-800 md:space-y-[1.6cqw] md:text-[1.5cqw]">
-          <EditableText value={slide.texts.line1 || ""} onChange={(v) => updateText("line1", v)} as="p" className="text-inherit" />
-          <EditableText value={slide.texts.line2 || ""} onChange={(v) => updateText("line2", v)} as="p" className="text-inherit" />
-          <EditableText value={slide.texts.line3 || ""} onChange={(v) => updateText("line3", v)} as="p" className="text-inherit" />
+          <EditableText value={slide.texts.line1 || ""} onChange={(v) => updateText("line1", v)} as="p" className="text-inherit" scale={slide.fontScale} />
+          <EditableText value={slide.texts.line2 || ""} onChange={(v) => updateText("line2", v)} as="p" className="text-inherit" scale={slide.fontScale} />
+          <EditableText value={slide.texts.line3 || ""} onChange={(v) => updateText("line3", v)} as="p" className="text-inherit" scale={slide.fontScale} />
         </div>
       </div>
       <div className="relative z-10 my-12 flex aspect-square w-[75vw] max-w-[320px] shrink-0 items-center justify-center md:my-0 md:w-[26cqw] md:max-w-none">
@@ -463,13 +475,13 @@ export function buildSlides(data: SlideData[]): Slide[] {
             {budget && (
               <p>
                 Budget:{" "}
-                <EditableText value={budget} onChange={(v) => updateText("budget", v)} as="span" className="inline font-bold text-neutral-900" />
+                <EditableText value={budget} onChange={(v) => updateText("budget", v)} as="span" className="inline font-bold text-neutral-900" scale={slide.fontScale} />
               </p>
             )}
             {geography && (
               <p>
                 Geography:{" "}
-                <EditableText value={geography} onChange={(v) => updateText("geography", v)} as="span" className="inline font-bold text-neutral-900" />
+                <EditableText value={geography} onChange={(v) => updateText("geography", v)} as="span" className="inline font-bold text-neutral-900" scale={slide.fontScale} />
               </p>
             )}
           </div>
@@ -487,7 +499,7 @@ export function buildSlides(data: SlideData[]): Slide[] {
           ) : (
             <div>
               <h3 className="text-xl font-black text-neutral-900 md:text-[1.7cqw]">Media Mix</h3>
-              <EditableText value={slide.texts.channels || ""} onChange={(v) => updateText("channels", v)} as="p" className="mt-1 text-sm text-neutral-700 md:text-[1.25cqw]" />
+              <EditableText value={slide.texts.channels || ""} onChange={(v) => updateText("channels", v)} as="p" className="mt-1 text-sm text-neutral-700 md:text-[1.25cqw]" scale={slide.fontScale} />
             </div>
           )}
           {audience && (
@@ -498,6 +510,7 @@ export function buildSlides(data: SlideData[]): Slide[] {
                 onChange={(v) => updateText("audience", v)}
                 as="p"
                 className="mt-1 text-sm text-neutral-700 md:text-[1.25cqw]"
+                scale={slide.fontScale}
               />
             </div>
           )}
@@ -519,6 +532,7 @@ export function buildSlides(data: SlideData[]): Slide[] {
                 onChange={(v) => updateText(key, v)}
                 as="p"
                 className="text-inherit"
+                scale={slide.fontScale}
               />
             </div>
           ))}
@@ -562,6 +576,7 @@ export function buildSlides(data: SlideData[]): Slide[] {
                     onChange={(v) => updateText(key, v)}
                     as="p"
                     className="text-inherit"
+                    scale={slide.fontScale}
                   />
                 </div>
               </div>
@@ -602,6 +617,7 @@ export function buildSlides(data: SlideData[]): Slide[] {
                 onChange={(v) => updateText("steps", v)}
                 as="p"
                 className="whitespace-pre-wrap"
+                scale={slide.fontScale}
               />
             </div>
           )}
@@ -637,20 +653,21 @@ export function buildSlides(data: SlideData[]): Slide[] {
             onChange={(v) => updateText("title", v)}
             as="p"
             className="text-inherit"
+            scale={slide.fontScale}
           />
         </div>
         <ul className="list-disc space-y-2 pl-5 text-sm text-neutral-800 md:space-y-[0.8cqw] md:pl-[1.4cqw] md:text-[1.25cqw]">
           <li>
             <span className="font-bold">Challenge:</span>{" "}
-            <EditableText value={slide.texts.challenge || ""} onChange={(v) => updateText("challenge", v)} as="span" className="inline-block" />
+            <EditableText value={slide.texts.challenge || ""} onChange={(v) => updateText("challenge", v)} as="span" className="inline-block" scale={slide.fontScale} />
           </li>
           <li>
             <span className="font-bold">Solution:</span>{" "}
-            <EditableText value={slide.texts.solution || ""} onChange={(v) => updateText("solution", v)} as="span" className="inline-block" />
+            <EditableText value={slide.texts.solution || ""} onChange={(v) => updateText("solution", v)} as="span" className="inline-block" scale={slide.fontScale} />
           </li>
           <li>
             <span className="font-bold">Outcome:</span>{" "}
-            <EditableText value={slide.texts.outcome || ""} onChange={(v) => updateText("outcome", v)} as="span" className="inline-block" />
+            <EditableText value={slide.texts.outcome || ""} onChange={(v) => updateText("outcome", v)} as="span" className="inline-block" scale={slide.fontScale} />
           </li>
         </ul>
       </div>
@@ -677,7 +694,7 @@ export function buildSlides(data: SlideData[]): Slide[] {
               {["kpi1", "kpi2", "kpi3"].map((key) =>
                 (slide.texts[key] || "").trim() ? (
                   <li key={key}>
-                    <EditableText value={slide.texts[key]} onChange={(v) => updateText(key, v)} as="span" className="inline" />
+                    <EditableText value={slide.texts[key]} onChange={(v) => updateText(key, v)} as="span" className="inline" scale={slide.fontScale} />
                   </li>
                 ) : null
               )}
@@ -689,10 +706,10 @@ export function buildSlides(data: SlideData[]): Slide[] {
             </h3>
             <ul className="list-disc space-y-1 pl-5 md:space-y-[0.3cqw] md:pl-[1.4cqw]">
               {(slide.texts.budget || "").trim() && (
-                <li>Budget: <EditableText value={slide.texts.budget} onChange={(v) => updateText("budget", v)} as="span" className="inline font-bold" /></li>
+                <li>Budget: <EditableText value={slide.texts.budget} onChange={(v) => updateText("budget", v)} as="span" className="inline font-bold" scale={slide.fontScale} /></li>
               )}
               {(slide.texts.channels || "").trim() && (
-                <li>Channels: <EditableText value={slide.texts.channels} onChange={(v) => updateText("channels", v)} as="span" className="inline font-bold" /></li>
+                <li>Channels: <EditableText value={slide.texts.channels} onChange={(v) => updateText("channels", v)} as="span" className="inline font-bold" scale={slide.fontScale} /></li>
               )}
             </ul>
           </div>
@@ -743,7 +760,7 @@ export function buildSlides(data: SlideData[]): Slide[] {
                     {items.map((item, i) => <li key={i}>{item}</li>)}
                   </ul>
                 ) : (
-                  <EditableText value={rawText} onChange={(v) => updateText(key, v)} as="p" className="text-sm text-neutral-700 md:text-[1.25cqw]" />
+                  <EditableText value={rawText} onChange={(v) => updateText(key, v)} as="p" className="text-sm text-neutral-700 md:text-[1.25cqw]" scale={slide.fontScale} />
                 )}
               </div>
             ))}
@@ -791,6 +808,7 @@ export function buildSlides(data: SlideData[]): Slide[] {
                       }
                       as="h3"
                       className="text-lg font-bold text-neutral-900 md:text-[1.6cqw]"
+                      scale={slide.fontScale}
                     />
                     {i < steps.length - 1 && (
                       <span className="my-2 text-xl font-bold text-neutral-400 md:my-[0.3cqw] md:text-[1.5cqw]">
@@ -824,6 +842,7 @@ export function buildSlides(data: SlideData[]): Slide[] {
                 onChange={(v) => updateText("closing", v)}
                 as="p"
                 className="text-inherit"
+                scale={slide.fontScale}
               />
             </div>
           </div>

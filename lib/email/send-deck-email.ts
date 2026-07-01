@@ -20,8 +20,8 @@ export async function sendDeckEmail(input: DeckEmail): Promise<string> {
     body: JSON.stringify({
       from,
       to: [input.clientEmail],
-      subject: `${input.projectName} Pitch Deck`,
-      text: `Hi ${input.clientName},\n\n${input.message?.trim() || "Please find your pitch deck attached."}\n\n434 Media`,
+      subject: `${input.projectName} — 434 Media Pitch Deck`,
+      text: `Hi ${input.clientName || "there"},\n\n${input.message?.trim() || "Attached is your personalized pitch deck from 434 Media."}\n\nBest,\n434 Media`,
       attachments: [{ filename: input.filename, content: input.pdf.toString("base64") }],
     }),
   });

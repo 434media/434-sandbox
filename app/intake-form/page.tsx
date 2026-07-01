@@ -183,7 +183,7 @@ export default function IntakeFormPage() {
   const [submitted, setSubmitted] = useState(false);
   const [form, setForm] = useState<FormState>(initialForm);
   const [errors, setErrors] = useState<Set<keyof FormState>>(new Set());
-  const [activeSection, setActiveSection] = useState<SectionKey | null>("00");
+  const [activeSection, setActiveSection] = useState<SectionKey | null>("01");
   const [submitError, setSubmitError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const formTopRef = useRef<HTMLDivElement>(null);

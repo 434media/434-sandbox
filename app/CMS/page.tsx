@@ -7,9 +7,9 @@ import {
   type Slide,
   type SlideData,
 } from "@/lib/deck-generator/slides";
+import { deckContentToSlideData } from "@/lib/deck-generator/deck-content";
 import type {
   IntakeFormData,
-  GeneratedDeckContent,
   GenerateDeckResponse,
 } from "@/lib/deck-generator/types";
 import type { CMSProject, IntakeData, IntakeSubmission } from "@/lib/cms/types";
@@ -137,23 +137,6 @@ function toIntakeRecord(intake: IntakeSubmission): IntakeRecord {
 /* ================================================================== */
 /*  SLIDE HELPERS                                                       */
 /* ================================================================== */
-
-function deckContentToSlideData(deck: GeneratedDeckContent): SlideData[] {
-  return [
-    { id: "title",      image: "", texts: deck.slide1 as unknown as Record<string, string> },
-    { id: "heard",      image: "", texts: deck.slide2 as unknown as Record<string, string> },
-    { id: "opportunity",image: "", texts: deck.slide3 as unknown as Record<string, string> },
-    { id: "strategy",   image: "", texts: deck.slide4 as unknown as Record<string, string> },
-    { id: "plan",       image: "", texts: deck.slide5 as unknown as Record<string, string> },
-    { id: "why",        image: "", texts: deck.slide6 as unknown as Record<string, string> },
-    { id: "audience",   image: "", texts: deck.slide7 as unknown as Record<string, string> },
-    { id: "flow",       image: "", texts: deck.slide8 as unknown as Record<string, string> },
-    { id: "success",    image: "", texts: deck.slide9 as unknown as Record<string, string> },
-    { id: "metrics",    image: "", texts: deck.slide10 as unknown as Record<string, string> },
-    { id: "engagement", image: "", texts: deck.slide11 as unknown as Record<string, string> },
-    { id: "nextsteps",  image: "", texts: deck.slide12 as unknown as Record<string, string> },
-  ];
-}
 
 /* ================================================================== */
 /*  MANUAL TEMPLATE — hint text per slide                              */
@@ -568,6 +551,8 @@ function SlideAccordion({
 
   const updateField = (id: string, key: string, val: string) =>
     onChange(slideData.map((s) => s.id === id ? { ...s, texts: { ...s.texts, [key]: val } } : s));
+  const updateFontScale = (id: string, scale: number) =>
+    onChange(slideData.map((s) => s.id === id ? { ...s, fontScale: scale } : s));
   return (
     <div className="space-y-2">
       {SLIDE_META.map((meta, idx) => {
@@ -588,6 +573,20 @@ function SlideAccordion({
               <span className="font-geist-mono text-xs text-neutral-400 w-6 shrink-0">{String(idx + 1).padStart(2, "0")}</span>
               <span className="flex-1 font-medium text-neutral-900">Slide {idx + 1} — {meta.label}</span>
               <span className={`text-[10px] font-geist-mono px-2 py-0.5 rounded-full ${filled === meta.fields.length ? "bg-emerald-100 text-emerald-700" : "bg-neutral-100 text-neutral-500"}`}>{filled}/{meta.fields.length}</span>
+              <select
+                value={data.fontScale ?? 1}
+                onChange={(e) => updateFontScale(meta.id, Number(e.target.value))}
+                onClick={(e) => e.stopPropagation()}
+                className="shrink-0 text-xs px-2 py-1 rounded-lg border border-neutral-200 text-neutral-500 hover:border-neutral-900 hover:text-neutral-900 transition-colors bg-white"
+                title="Font size for this slide's text"
+              >
+                <option value={0.75}>75%</option>
+                <option value={0.9}>90%</option>
+                <option value={1}>100%</option>
+                <option value={1.1}>110%</option>
+                <option value={1.25}>125%</option>
+                <option value={1.5}>150%</option>
+              </select>
               {onRegenerateSlide && (
                 <button type="button" onClick={(e) => { e.stopPropagation(); onRegenerateSlide(meta.id); }} disabled={!!isRegenerating} className="shrink-0 text-xs px-2.5 py-1 rounded-lg border border-neutral-200 text-neutral-500 hover:border-neutral-900 hover:text-neutral-900 transition-colors disabled:opacity-40" title="Regenerate this slide">
                   {regen ? <span className="flex items-center gap-1"><span className="animate-spin h-3 w-3 border-2 border-neutral-400 border-t-neutral-900 rounded-full inline-block" /></span> : "↺"}
@@ -924,17 +923,39 @@ export default function CMSPage() {
     if (!emailProject || isSendingEmail) return;
     setIsSendingEmail(true); setFeedback(null);
     try {
-      const response = await fetch("/api/email-pdf", {
+      const response = await fetch("/api/generate-pdf", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ projectId: emailProject.id, projectName: emailProject.name, slideData: emailProject.slideData, ...emailForm }),
+        body: JSON.stringify({ projectId: emailProject.id, projectName: emailProject.name, slideData: emailProject.slideData }),
       });
-      const result = await response.json();
-      if (!response.ok) throw new Error(result.error || "Email delivery failed.");
+      if (!response.ok) {
+        const result = await response.json().catch(() => ({}));
+        throw new Error(result.error || "PDF generation failed.");
+      }
+      const blob = await response.blob();
+      const disposition = response.headers.get("Content-Disposition") || "";
+      const filename = disposition.match(/filename="([^"]+)"/)?.[1] || "Pitch_Deck.pdf";
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url; anchor.download = filename;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+
+      const subject = `${emailProject.name} — 434 Media Pitch Deck`;
+      const body = emailForm.message.trim() || `Hi ${emailForm.clientName || "there"},\n\nAttached is your personalized pitch deck from 434 Media.\n\nBest,\n434 Media`;
+      // Delay both the mailto navigation and the object URL cleanup — assigning
+      // location.href immediately after triggering a blob download can cancel
+      // the in-flight download in Chrome/Edge, since it looks like a navigation.
+      setTimeout(() => {
+        window.location.href = `mailto:${encodeURIComponent(emailForm.clientEmail)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+        URL.revokeObjectURL(url);
+      }, 500);
+
       setEmailProject(null);
       setEmailForm({ clientName: "", clientEmail: "", message: "" });
-      setFeedback({ kind: "success", message: `PDF emailed to ${emailForm.clientEmail}.` });
+      setFeedback({ kind: "success", message: `${filename} downloaded — attach it to the email draft that just opened.` });
     } catch (error) {
-      setFeedback({ kind: "error", message: error instanceof Error ? error.message : "Email delivery failed." });
+      setFeedback({ kind: "error", message: error instanceof Error ? error.message : "PDF generation failed." });
     } finally { setIsSendingEmail(false); }
   };
 
@@ -1229,6 +1250,7 @@ export default function CMSPage() {
                 <div><p className="font-geist-mono text-[10px] uppercase tracking-[0.2em] text-neutral-400">Email PDF</p><h2 className="mt-1 text-xl font-semibold text-neutral-900">{emailProject.name}</h2></div>
                 <button type="button" onClick={() => setEmailProject(null)} disabled={isSendingEmail} className="text-xl text-neutral-400 hover:text-neutral-900 disabled:opacity-40" aria-label="Close">×</button>
               </div>
+              <p className="mb-4 text-xs text-neutral-500">This downloads the deck as a PDF and opens your email app with the client's address, subject, and message pre-filled — just attach the downloaded file and hit send.</p>
               <div className="space-y-4">
                 <label className="block"><span className="mb-1.5 block text-xs font-medium text-neutral-600">Client Name</span><input required value={emailForm.clientName} onChange={(e) => setEmailForm((form) => ({ ...form, clientName: e.target.value }))} className={baseField} /></label>
                 <label className="block"><span className="mb-1.5 block text-xs font-medium text-neutral-600">Client Email</span><input required type="email" value={emailForm.clientEmail} onChange={(e) => setEmailForm((form) => ({ ...form, clientEmail: e.target.value }))} className={baseField} /></label>
@@ -1236,7 +1258,7 @@ export default function CMSPage() {
               </div>
               <div className="mt-6 flex items-center justify-end gap-3">
                 <button type="button" onClick={() => setEmailProject(null)} disabled={isSendingEmail} className="rounded-xl px-4 py-2.5 text-sm text-neutral-500 hover:text-neutral-900 disabled:opacity-40">Cancel</button>
-                <button type="submit" disabled={isSendingEmail} className="rounded-xl bg-neutral-900 px-5 py-2.5 text-sm font-medium text-white hover:bg-neutral-800 disabled:cursor-not-allowed disabled:opacity-50">{isSendingEmail ? "Generating & sending…" : "Send PDF"}</button>
+                <button type="submit" disabled={isSendingEmail} className="rounded-xl bg-neutral-900 px-5 py-2.5 text-sm font-medium text-white hover:bg-neutral-800 disabled:cursor-not-allowed disabled:opacity-50">{isSendingEmail ? "Preparing PDF…" : "Download & Open Email"}</button>
               </div>
             </motion.form>
           </motion.div>
