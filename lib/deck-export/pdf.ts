@@ -1,4 +1,5 @@
 import { access } from "node:fs/promises";
+import chromium from "@sparticuz/chromium";
 import puppeteer from "puppeteer-core";
 import type { DeckExportPayload } from "@/lib/deck-export/types";
 
@@ -10,19 +11,22 @@ const localChromePaths = [
   "/usr/bin/chromium-browser",
 ];
 
-async function chromeExecutable(): Promise<string> {
+async function localChromeExecutable(): Promise<string | null> {
   if (process.env.PUPPETEER_EXECUTABLE_PATH) return process.env.PUPPETEER_EXECUTABLE_PATH;
   for (const path of localChromePaths) {
     try { await access(path); return path; } catch {}
   }
-  throw new Error("No Chrome executable found. Set PUPPETEER_EXECUTABLE_PATH.");
+  return null;
 }
 
 export async function generateDeckPdf(payload: DeckExportPayload, origin: string): Promise<Buffer> {
+  const localExecutable = await localChromeExecutable();
   const browser = await puppeteer.launch({
-    executablePath: await chromeExecutable(),
+    executablePath: localExecutable ?? await chromium.executablePath(),
     headless: true,
-    args: ["--no-sandbox", "--disable-setuid-sandbox"],
+    args: localExecutable
+      ? ["--no-sandbox", "--disable-setuid-sandbox"]
+      : chromium.args,
   });
 
   try {

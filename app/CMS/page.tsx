@@ -343,9 +343,9 @@ function buildImagePrompt(slideId: string, texts: Record<string, string>): strin
 }
 
 function ImagePicker({
-  src, onChange, slideId, slideTexts,
+  onChange, slideId, slideTexts,
 }: {
-  src?: string; onChange: (url: string) => void; slideId?: string; slideTexts?: Record<string, string>;
+  onChange: (url: string) => void; slideId?: string; slideTexts?: Record<string, string>;
 }) {
   const ref = useRef<HTMLInputElement>(null);
   const [aiOpen, setAiOpen] = useState(false);
@@ -389,17 +389,6 @@ function ImagePicker({
 
   return (
     <div className="space-y-2">
-      <div className="relative h-28 rounded-xl overflow-hidden bg-neutral-100">
-        {src ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={src} alt="" className="absolute inset-0 h-full w-full object-cover grayscale" />
-        ) : (
-          <div className="absolute inset-0 flex items-center justify-center" style={{ background: "repeating-linear-gradient(135deg,#d4d4d4 0 14px,#c8c8c8 14px 28px)" }}>
-            <span className="text-neutral-500 text-xs font-medium">No image set</span>
-          </div>
-        )}
-        {src && <button type="button" onClick={() => onChange("")} className="absolute top-2 right-2 bg-black/60 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm leading-none hover:bg-red-600 transition-colors" aria-label="Remove image">×</button>}
-      </div>
       <div className="grid grid-cols-2 gap-2">
         <button type="button" onClick={() => ref.current?.click()} className="flex items-center justify-center gap-1.5 text-xs py-2 px-3 rounded-lg bg-neutral-100 hover:bg-neutral-200 text-neutral-700 font-medium transition-colors">↑ Upload</button>
         <button type="button" onClick={() => { const opening = !aiOpen; setAiOpen(opening); setAiError(""); if (opening && slideId && slideTexts && !prompt.trim()) setPrompt(buildImagePrompt(slideId, slideTexts)); }} className={`flex items-center justify-center gap-1.5 text-xs py-2 px-3 rounded-lg font-medium transition-colors ${aiOpen ? "bg-neutral-900 text-white" : "bg-neutral-100 hover:bg-neutral-200 text-neutral-700"}`}>✦ AI Studio</button>
@@ -561,10 +550,12 @@ function SlideMiniPreview({
   data,
   label,
   onPositionChange,
+  onRemoveImage,
 }: {
   data: SlideData;
   label: string;
   onPositionChange: (position: { x: number; y: number }) => void;
+  onRemoveImage: () => void;
 }) {
   const frameRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<{ pointerId: number; x: number; y: number; position: { x: number; y: number } } | null>(null);
@@ -624,14 +615,17 @@ function SlideMiniPreview({
           </div>
         )}
         {data.image && (
-          <div
-            className="absolute inset-0 z-20 cursor-move touch-none"
-            onPointerDown={beginDrag}
-            onPointerMove={moveImage}
-            onPointerUp={() => { dragRef.current = null; }}
-            onPointerCancel={() => { dragRef.current = null; }}
-            aria-label="Drag to reposition slide image"
-          />
+          <>
+            <div
+              className="absolute inset-0 z-20 cursor-move touch-none"
+              onPointerDown={beginDrag}
+              onPointerMove={moveImage}
+              onPointerUp={() => { dragRef.current = null; }}
+              onPointerCancel={() => { dragRef.current = null; }}
+              aria-label="Drag to reposition slide image"
+            />
+            <button type="button" onClick={onRemoveImage} className="absolute right-2 top-2 z-30 flex h-6 w-6 items-center justify-center rounded-full bg-black/60 text-sm leading-none text-white transition-colors hover:bg-red-600" aria-label="Remove image">×</button>
+          </>
         )}
       </div>
       {data.image && (
@@ -692,11 +686,8 @@ function SlideAccordion({
                         }
                       </label>
                     ))}
-                    <label className="block">
-                      <span className="mb-1.5 block font-geist-mono text-[10px] uppercase tracking-[0.18em] text-neutral-500">Slide Background Image</span>
-                      <ImagePicker src={data.image} onChange={(v) => onImageChange(meta.id, v)} slideId={meta.id} slideTexts={data.texts} />
-                    </label>
-                    <SlideMiniPreview data={data} label={`Slide ${idx + 1} — ${meta.label}`} onPositionChange={(position) => onImagePositionChange(meta.id, position)} />
+                    <SlideMiniPreview data={data} label={`Slide ${idx + 1} — ${meta.label}`} onPositionChange={(position) => onImagePositionChange(meta.id, position)} onRemoveImage={() => onImageChange(meta.id, "")} />
+                    <ImagePicker onChange={(v) => onImageChange(meta.id, v)} slideId={meta.id} slideTexts={data.texts} />
                   </div>
                 </motion.div>
               )}
