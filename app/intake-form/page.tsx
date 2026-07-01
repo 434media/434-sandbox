@@ -3,6 +3,7 @@
 import { useState, useRef, type ReactNode } from "react";
 import { motion, AnimatePresence, type Variants } from "motion/react";
 import { ScrambleText } from "@/components/ScrambleText";
+import type { IntakeData } from "@/lib/cms/types";
 
 /* ------------------------------------------------------------------ */
 /*  Config                                                            */
@@ -31,27 +32,10 @@ const channelOptions = [
 
 const budgetOptions = ["Under $5k", "$5–15k", "$15–50k", "$50k+"];
 
-type FormState = {
-  email: string;
-  company: string;
-  website: string;
-  contact: string;
-  objective: string;
-  whyNow: string;
-  geography: string;
-  audience: string;
-  channels: string[];
-  budget: string;
-  competitors: string;
-  usp: string;
-  notes: string;
-};
+type FormState = IntakeData;
 
 const initialForm: FormState = {
-  email: "",
-  company: "",
-  website: "",
-  contact: "",
+  companyName: "",
   objective: "",
   whyNow: "",
   geography: "",
@@ -64,10 +48,7 @@ const initialForm: FormState = {
 };
 
 const requiredFields: (keyof FormState)[] = [
-  "email",
-  "company",
-  "website",
-  "contact",
+  "companyName",
   "objective",
   "whyNow",
   "geography",
@@ -170,6 +151,8 @@ export default function IntakeFormPage() {
   const [submitted, setSubmitted] = useState(false);
   const [form, setForm] = useState<FormState>(initialForm);
   const [errors, setErrors] = useState<Set<keyof FormState>>(new Set());
+  const [submitError, setSubmitError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const formTopRef = useRef<HTMLDivElement>(null);
 
   const update = <K extends keyof FormState>(name: K, value: FormState[K]) => {
@@ -199,24 +182,32 @@ export default function IntakeFormPage() {
     }
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     const missing = requiredFields.filter((key) => {
       const v = form[key];
       return Array.isArray(v) ? v.length === 0 : v.trim() === "";
     });
     if (missing.length) {
       setErrors(new Set(missing));
-      // jump to the first thing they missed
       document
         .querySelector(`[data-field="${missing[0]}"]`)
         ?.scrollIntoView({ behavior: "smooth", block: "center" });
       return;
     }
     setErrors(new Set());
-    // Sandbox: no production endpoint. Capture the real shape for the lead dev.
-    console.log("SANDBOX SUBMISSION", form);
-    setSubmitted(true);
-    formTopRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    setSubmitError("");
+    setIsSubmitting(true);
+    try {
+      const response = await fetch("/api/intakes", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "Unable to submit intake.");
+      setSubmitted(true);
+      formTopRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    } catch (error) {
+      setSubmitError(error instanceof Error ? error.message : "Unable to submit intake.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const err = (k: keyof FormState) => errors.has(k);
@@ -240,7 +231,6 @@ export default function IntakeFormPage() {
 
         <AnimatePresence mode="wait">
           {submitted ? (
-            /* CLIENT-SAFE CONFIRMATION — no captured data echoed back */
             <motion.div
               key="success"
               initial={{ opacity: 0, y: 24 }}
@@ -258,6 +248,7 @@ export default function IntakeFormPage() {
                 Your discovery intake has been received. The 434 Media team will review the details
                 and follow up with next steps shortly.
               </p>
+              {/* "Submit another" button removed per request */}
             </motion.div>
           ) : (
             <motion.div
@@ -267,55 +258,15 @@ export default function IntakeFormPage() {
               exit={{ opacity: 0 }}
               className="mt-12 space-y-6"
             >
-              {/* 01 — WHO & WHERE */}
-              <Section index="01" title="Who & Where">
-                <div className="space-y-5">
-                  <div data-field="email">
-                    <FieldShell label="Submitter Email" required error={err("email")}>
-                      <input
-                        type="email"
-                        className={field("email")}
-                        placeholder="you@company.com"
-                        value={form.email}
-                        onChange={(e) => update("email", e.target.value)}
-                      />
-                    </FieldShell>
-                  </div>
-                  <div data-field="company">
-                    <FieldShell label="Company Name" required error={err("company")}>
-                      <input
-                        className={field("company")}
-                        placeholder="Acme Inc."
-                        value={form.company}
-                        onChange={(e) => update("company", e.target.value)}
-                      />
-                    </FieldShell>
-                  </div>
-                  <div data-field="website">
-                    <FieldShell label="Website URL" required error={err("website")}>
-                      <input
-                        className={field("website")}
-                        placeholder="https://"
-                        value={form.website}
-                        onChange={(e) => update("website", e.target.value)}
-                      />
-                    </FieldShell>
-                  </div>
-                  <div data-field="contact">
-                    <FieldShell label="Primary Contact Name & Role" required error={err("contact")}>
-                      <input
-                        className={field("contact")}
-                        placeholder="Jane Doe, CMO"
-                        value={form.contact}
-                        onChange={(e) => update("contact", e.target.value)}
-                      />
-                    </FieldShell>
-                  </div>
+              <Section index="00" title="Client">
+                <div data-field="companyName">
+                  <FieldShell label="Company / Client Name" required error={err("companyName")}>
+                    <input className={field("companyName")} placeholder="Company name" value={form.companyName} onChange={(e) => update("companyName", e.target.value)} />
+                  </FieldShell>
                 </div>
               </Section>
-
-              {/* 02 — THE OPPORTUNITY */}
-              <Section index="02" title="The Opportunity">
+              {/* 01 — THE OPPORTUNITY */}
+              <Section index="01" title="The Opportunity">
                 <div className="space-y-5">
                   <div data-field="objective">
                     <FieldShell label="Primary Objective" required error={err("objective")}>
@@ -377,8 +328,8 @@ export default function IntakeFormPage() {
                 </div>
               </Section>
 
-              {/* 03 — MEDIA PLAN INPUTS */}
-              <Section index="03" title="Media Plan Inputs">
+              {/* 02 — MEDIA PLAN INPUTS */}
+              <Section index="02" title="Media Plan Inputs">
                 <div data-field="channels">
                   <FieldShell label="Channels of Interest" required error={err("channels")}>
                     <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
@@ -431,8 +382,8 @@ export default function IntakeFormPage() {
                 </div>
               </Section>
 
-              {/* 04 — SHARPEN THE PITCH */}
-              <Section index="04" title="Sharpen the Pitch">
+              {/* 03 — SHARPEN THE PITCH */}
+              <Section index="03" title="Sharpen the Pitch">
                 <div className="space-y-5">
                   <FieldShell label="Competitors">
                     <textarea
@@ -478,14 +429,16 @@ export default function IntakeFormPage() {
                     </motion.span>
                   )}
                 </AnimatePresence>
+                {submitError && <p role="alert" className="mr-4 text-sm text-red-600">{submitError}</p>}
                 <motion.button
                   type="button"
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                   onClick={handleSubmit}
-                  className="ml-auto rounded-xl bg-neutral-900 px-8 py-3.5 font-medium text-white"
+                  disabled={isSubmitting}
+                  className="ml-auto rounded-xl bg-neutral-900 px-8 py-3.5 font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  Submit Intake
+                  {isSubmitting ? "Submitting…" : "Submit Intake"}
                 </motion.button>
               </div>
             </motion.div>

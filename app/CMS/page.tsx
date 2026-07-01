@@ -12,43 +12,15 @@ import type {
   GeneratedDeckContent,
   GenerateDeckResponse,
 } from "@/lib/deck-generator/types";
+import type { CMSProject, IntakeData, IntakeSubmission } from "@/lib/cms/types";
 
 /* ================================================================== */
 /*  TYPES                                                               */
 /* ================================================================== */
 
-type FormState = {
-  companyName: string;
-  objective: string;
-  whyNow: string;
-  geography: string;
-  audience: string;
-  channels: string[];
-  budget: string;
-  competitors: string;
-  usp: string;
-  notes: string;
-};
-
-type Project = {
-  id: string;
-  name: string;
-  status: "draft" | "ready" | "exported";
-  sourceMode: "intake" | "manual";
-  intakeId?: string;
-  slideData: SlideData[];
-  createdAt: string;
-  updatedAt: string;
-};
-
-type IntakeRecord = {
-  id: string;
-  name: string;
-  objective: string;
-  geography: string;
-  formData: FormState;
-  createdAt: string;
-};
+type FormState = IntakeData;
+type Project = CMSProject;
+type IntakeRecord = IntakeSubmission & { name: string; formData: IntakeData };
 
 type View =
   | "landing"
@@ -154,69 +126,13 @@ const SLIDE_META: Array<{
 ];
 
 /* ================================================================== */
-/*  STORAGE                                                             */
+/*  API ADAPTERS                                                        */
 /* ================================================================== */
 
-function readLS<T>(key: string): T[] {
-  try { return JSON.parse(localStorage.getItem(key) ?? "[]") as T[]; } catch { return []; }
+function toIntakeRecord(intake: IntakeSubmission): IntakeRecord {
+  const { id, createdAt, updatedAt, status, source, leadScore, deckStatus, ...formData } = intake;
+  return { ...intake, id, createdAt, updatedAt, status, source, leadScore, deckStatus, name: intake.companyName, formData };
 }
-function writeLS<T>(key: string, data: T[]) {
-  try { localStorage.setItem(key, JSON.stringify(data)); } catch {}
-}
-function uid() {
-  return typeof crypto !== "undefined" && crypto.randomUUID
-    ? crypto.randomUUID()
-    : Date.now().toString(36) + Math.random().toString(36).slice(2);
-}
-
-function getProjects(): Project[] { return readLS<Project>("cms_projects"); }
-function persistProject(p: Project) {
-  const all = getProjects();
-  const idx = all.findIndex((x) => x.id === p.id);
-  if (idx >= 0) all[idx] = p; else all.unshift(p);
-  writeLS("cms_projects", all);
-}
-function removeProject(id: string) { writeLS("cms_projects", getProjects().filter((p) => p.id !== id)); }
-
-function getIntakes(): IntakeRecord[] {
-  const fresh = readLS<IntakeRecord>("cms_intakes");
-  if (fresh.length) return fresh;
-  return readLS<{ id: string; name: string; formData: FormState; createdAt: string }>("intakeSubmissions")
-    .map((o) => ({ id: o.id, name: o.name, objective: o.formData.objective, geography: o.formData.geography, formData: o.formData, createdAt: o.createdAt }));
-}
-function persistIntake(r: IntakeRecord) {
-  const all = getIntakes();
-  const idx = all.findIndex((x) => x.id === r.id);
-  if (idx >= 0) all[idx] = r; else all.unshift(r);
-  writeLS("cms_intakes", all);
-  writeLS("intakeSubmissions", all.map((i) => ({ id: i.id, name: i.name, formData: i.formData, createdAt: i.createdAt })));
-}
-function removeIntake(id: string) {
-  const updated = getIntakes().filter((i) => i.id !== id);
-  writeLS("cms_intakes", updated);
-  writeLS("intakeSubmissions", updated.map((i) => ({ id: i.id, name: i.name, formData: i.formData, createdAt: i.createdAt })));
-}
-
-const MOCK_INTAKES: IntakeRecord[] = [
-  {
-    id: "mock-txmx", name: "TXMX Boxing — Championship Event",
-    objective: "Event Attendance / Tickets", geography: "San Antonio, TX",
-    createdAt: new Date(Date.now() - 7 * 86400000).toISOString(),
-    formData: { companyName: "TXMX Boxing", objective: "Event Attendance / Tickets", whyNow: "Championship in 6 weeks — ticket sales are lagging behind projections", geography: "San Antonio, TX — with digital reach across DFW and Houston", audience: "Hispanic sports fans 18–45, boxing enthusiasts, local fight community", channels: ["Paid Social", "Display", "Pre-Roll / YouTube"], budget: "$15–50k", competitors: "ESPN+ boxing events, local fight promotion companies", usp: "Authentic Latino boxing culture, hometown heroes, family-friendly atmosphere", notes: "Event date March 15. Bilingual creative required." },
-  },
-  {
-    id: "mock-vemos", name: "Vemos Vamos — South Texas Tourism",
-    objective: "Brand Awareness", geography: "South Texas",
-    createdAt: new Date(Date.now() - 3 * 86400000).toISOString(),
-    formData: { companyName: "Vemos Vamos", objective: "Brand Awareness", whyNow: "Spring break season is the highest travel demand window of the year", geography: "South Texas — targeting travelers from Austin, Houston, and DFW", audience: "Cultural travelers 25–55, heritage tourism seekers, families with disposable income", channels: ["Paid Social", "SEO / GEO", "Display"], budget: "$5–15k", competitors: "Visit San Antonio, Texas Tourism Board campaigns", usp: "Authentic under-the-radar destinations, community-led storytelling, local immersion", notes: "Partner with local artists and restaurants for content." },
-  },
-  {
-    id: "mock-canvas", name: "Digital Canvas — B2B SaaS Launch",
-    objective: "Lead Generation", geography: "National",
-    createdAt: new Date(Date.now() - 86400000).toISOString(),
-    formData: { companyName: "Digital Canvas", objective: "Lead Generation", whyNow: "Product launch window is Q2 — competitors are spending heavily right now", geography: "US National — targeting agencies in the top 10 markets", audience: "Creative directors and marketing managers at agencies with 10–200 employees", channels: ["Paid Search", "Paid Social", "Email"], budget: "$50k+", competitors: "Figma, Canva for Teams, Adobe Creative Cloud for Teams", usp: "AI-powered creative briefs, real-time collaboration, built specifically for agencies", notes: "Emphasize ROI and time savings. Beta user case studies available as social proof." },
-  },
-];
 
 /* ================================================================== */
 /*  SLIDE HELPERS                                                       */
@@ -703,8 +619,8 @@ function SlideAccordion({
 /*  INTAKE MINI-FORM                                                    */
 /* ================================================================== */
 
-function IntakeForm({ onSubmit, onCancel }: { onSubmit: (form: FormState) => void; onCancel: () => void }) {
-  const [form, setForm] = useState<FormState>(emptyForm);
+function IntakeForm({ onSubmit, onCancel, initialData = emptyForm }: { onSubmit: (form: FormState) => void; onCancel: () => void; initialData?: FormState }) {
+  const [form, setForm] = useState<FormState>(initialData);
   const [errors, setErrors] = useState<Set<keyof FormState>>(new Set());
   const update = <K extends keyof FormState>(k: K, v: FormState[K]) => { setForm((f) => ({ ...f, [k]: v })); setErrors((prev) => { const n = new Set(prev); n.delete(k); return n; }); };
   const toggleChannel = (c: string) => update("channels", form.channels.includes(c) ? form.channels.filter((x) => x !== c) : [...form.channels, c]);
@@ -791,13 +707,24 @@ export default function CMSPage() {
   const [isRegeneratingSlide, setIsRegeneratingSlide] = useState<string | null>(null);
   const [useIntakeData, setUseIntakeData] = useState(true);
   const [intakeSearch, setIntakeSearch] = useState("");
+  const [isLoadingData, setIsLoadingData] = useState(true);
+  const [dataError, setDataError] = useState("");
+  const [selectedIntake, setSelectedIntake] = useState<IntakeRecord | null>(null);
+  const [editingIntake, setEditingIntake] = useState<IntakeRecord | null>(null);
   const previewSlides = useMemo(() => buildSlides(slideData), [slideData]);
 
   useEffect(() => {
-    setProjects(getProjects());
-    const existing = getIntakes();
-    if (existing.length === 0) { MOCK_INTAKES.forEach(persistIntake); setIntakes(getIntakes()); }
-    else setIntakes(existing);
+    Promise.all([fetch("/api/projects"), fetch("/api/intakes")])
+      .then(async ([projectResponse, intakeResponse]) => {
+        const projectResult = await projectResponse.json();
+        const intakeResult = await intakeResponse.json();
+        if (!projectResponse.ok) throw new Error(projectResult.error || "Unable to load projects.");
+        if (!intakeResponse.ok) throw new Error(intakeResult.error || "Unable to load intake submissions.");
+        setProjects(projectResult.projects);
+        setIntakes((intakeResult.intakes as IntakeSubmission[]).map(toIntakeRecord));
+      })
+      .catch((error) => setDataError(error instanceof Error ? error.message : "Unable to load CMS data."))
+      .finally(() => setIsLoadingData(false));
   }, []);
 
   useEffect(() => {
@@ -805,9 +732,10 @@ export default function CMSPage() {
     if (saveTimer.current) clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(() => {
       const updated: Project = { ...activeProject, slideData, updatedAt: new Date().toISOString() };
-      persistProject(updated);
+      fetch(`/api/projects/${updated.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slideData: updated.slideData }) })
+        .catch(() => setFeedback({ kind: "error", message: "Autosave failed." }));
       setActiveProject(updated);
-      setProjects(getProjects());
+      setProjects((current) => current.map((project) => project.id === updated.id ? updated : project));
       setLastSaved(new Date());
     }, 800);
     return () => { if (saveTimer.current) clearTimeout(saveTimer.current); };
@@ -820,10 +748,16 @@ export default function CMSPage() {
     setView("editor");
   };
 
-  const createProject = (name: string, sourceMode: Project["sourceMode"], data: SlideData[], intakeId?: string) => {
-    const project: Project = { id: uid(), name, status: "draft", sourceMode, intakeId, slideData: data, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
-    persistProject(project);
-    setProjects(getProjects());
+  const createProject = async (name: string, sourceMode: Project["sourceMode"], data: SlideData[], intakeId?: string) => {
+    const response = await fetch("/api/projects", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name, status: "draft", sourceMode, intakeId, slideData: data }) });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error || "Unable to create project.");
+    const project = result.project as Project;
+    setProjects((current) => [project, ...current]);
+    if (intakeId) {
+      await fetch(`/api/intakes/${intakeId}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ deckStatus: "generated", status: "qualified" }) });
+      setIntakes((current) => current.map((intake) => intake.id === intakeId ? { ...intake, deckStatus: "generated", status: "qualified" } : intake));
+    }
     openEditor(project);
   };
 
@@ -842,7 +776,7 @@ export default function CMSPage() {
       await new Promise((r) => setTimeout(r, 600));
       const data = deckContentToSlideData(deck);
       setGenerationStatus("done");
-      createProject(intake.name || intake.objective || "New Deck", "intake", data, intake.id);
+      await createProject(intake.name || intake.objective || "New Deck", "intake", data, intake.id);
     } catch (err) {
       console.error("[CMS] Generation failed:", err);
       setGenerationStatus("error");
@@ -899,12 +833,25 @@ export default function CMSPage() {
     }
   };
 
-  const handleNewIntake = (form: FormState) => {
-    const record: IntakeRecord = { id: uid(), name: form.companyName || form.objective || "Untitled", objective: form.objective, geography: form.geography, formData: form, createdAt: new Date().toISOString() };
-    persistIntake(record);
-    setIntakes(getIntakes());
-    if (useIntakeData) generateDeckFromIntake(record);
-    else createProject(record.name, "intake", buildManualSlideData(), record.id);
+  const handleNewIntake = async (form: FormState) => {
+    try {
+      if (editingIntake) {
+        await updateIntake(editingIntake, { data: form });
+        setEditingIntake(null);
+        setView("intake-select");
+        setFeedback({ kind: "success", message: "Intake updated." });
+        return;
+      }
+      const response = await fetch("/api/intakes", { method: "POST", headers: { "Content-Type": "application/json", "x-intake-source": "cms" }, body: JSON.stringify(form) });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "Unable to save intake.");
+      const record = toIntakeRecord(result.intake as IntakeSubmission);
+      setIntakes((current) => [record, ...current]);
+      if (useIntakeData) await generateDeckFromIntake(record);
+      else await createProject(record.name, "intake", buildManualSlideData(), record.id);
+    } catch (error) {
+      setFeedback({ kind: "error", message: error instanceof Error ? error.message : "Unable to save intake." });
+    }
   };
 
   const handlePreview = () => {
@@ -923,9 +870,10 @@ export default function CMSPage() {
         slideData: updatedSlideData,
         updatedAt: new Date().toISOString(),
       };
-      persistProject(updatedProject);
+      fetch(`/api/projects/${updatedProject.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slideData: updatedProject.slideData }) })
+        .catch(() => setFeedback({ kind: "error", message: "Image save failed." }));
       setActiveProject(updatedProject);
-      setProjects(getProjects());
+      setProjects((current) => current.map((project) => project.id === updatedProject.id ? updatedProject : project));
       setLastSaved(new Date());
     }
   }, [activeProject, slideData]);
@@ -976,8 +924,6 @@ export default function CMSPage() {
       });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || "Email delivery failed.");
-      const activity = readLS<{ projectId: string; recipient: string; sentAt: string; providerId: string }>("cms_email_activity");
-      writeLS("cms_email_activity", [{ projectId: emailProject.id, recipient: emailForm.clientEmail, sentAt: new Date().toISOString(), providerId: result.providerId }, ...activity]);
       setEmailProject(null);
       setEmailForm({ clientName: "", clientEmail: "", message: "" });
       setFeedback({ kind: "success", message: `PDF emailed to ${emailForm.clientEmail}.` });
@@ -1003,11 +949,30 @@ export default function CMSPage() {
     setIsEnhancing(false);
   }, [isEnhancing]);
 
-  const handleDeleteProject = (id: string) => { removeProject(id); setProjects(getProjects()); };
-  const handleMarkReady = (id: string) => {
-    const all = getProjects().map((p) => p.id === id ? { ...p, status: "ready" as const, updatedAt: new Date().toISOString() } : p);
-    writeLS("cms_projects", all);
-    setProjects(all);
+  const handleDeleteProject = async (id: string) => {
+    const response = await fetch(`/api/projects/${id}`, { method: "DELETE" });
+    if (response.ok) setProjects((current) => current.filter((project) => project.id !== id));
+    else setFeedback({ kind: "error", message: "Unable to delete project." });
+  };
+  const handleMarkReady = async (id: string) => {
+    const response = await fetch(`/api/projects/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status: "ready" }) });
+    if (response.ok) setProjects((current) => current.map((project) => project.id === id ? { ...project, status: "ready", updatedAt: new Date().toISOString() } : project));
+    else setFeedback({ kind: "error", message: "Unable to update project." });
+  };
+
+  const updateIntake = async (intake: IntakeRecord, changes: { data?: IntakeData; status?: IntakeSubmission["status"]; deckStatus?: IntakeSubmission["deckStatus"] }) => {
+    const response = await fetch(`/api/intakes/${intake.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(changes) });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error || "Unable to update intake.");
+    const next = toIntakeRecord({ ...intake, ...(changes.data ?? {}), status: changes.status ?? intake.status, deckStatus: changes.deckStatus ?? intake.deckStatus, updatedAt: new Date().toISOString() });
+    setIntakes((current) => current.map((item) => item.id === intake.id ? next : item));
+    setSelectedIntake(next);
+  };
+
+  const deleteIntake = async (intake: IntakeRecord) => {
+    const response = await fetch(`/api/intakes/${intake.id}`, { method: "DELETE" });
+    if (response.ok) { setIntakes((current) => current.filter((item) => item.id !== intake.id)); setSelectedIntake(null); }
+    else setFeedback({ kind: "error", message: "Unable to delete intake." });
   };
 
   /* ================================================================ */
@@ -1067,6 +1032,8 @@ export default function CMSPage() {
           <p className="font-geist-mono text-xs uppercase tracking-[0.3em] text-neutral-400">434 Media</p>
           <h1 className="font-ggx88 text-4xl md:text-5xl mt-1">Content Management System</h1>
         </div>
+        {isLoadingData && <div className="mb-6 rounded-2xl border border-neutral-200 bg-white p-5 text-sm text-neutral-500">Loading projects and intake submissions…</div>}
+        {dataError && <div role="alert" className="mb-6 rounded-2xl border border-red-200 bg-red-50 p-5 text-sm text-red-700">{dataError}</div>}
 
         {/* ── LANDING ── */}
         {view === "landing" && (
@@ -1141,7 +1108,7 @@ export default function CMSPage() {
             </div>
             <div className="flex gap-3 mb-5">
               <input type="text" placeholder="Search by company, objective, or location…" value={intakeSearch} onChange={(e) => setIntakeSearch(e.target.value)} className="flex-1 rounded-xl border border-neutral-300 px-4 py-2.5 text-sm outline-none focus:border-neutral-900 bg-white" />
-              <button onClick={() => setView("new-intake")} className="rounded-xl bg-neutral-900 px-5 py-2.5 text-sm text-white hover:bg-neutral-800 transition-colors shrink-0">+ New Profile</button>
+              <button onClick={() => { setEditingIntake(null); setView("new-intake"); }} className="rounded-xl bg-neutral-900 px-5 py-2.5 text-sm text-white hover:bg-neutral-800 transition-colors shrink-0">+ New Profile</button>
             </div>
             {(() => {
               const q = intakeSearch.toLowerCase();
@@ -1161,26 +1128,39 @@ export default function CMSPage() {
                         <p className="text-xs text-neutral-400 font-geist-mono mt-1">{new Date(intake.createdAt).toLocaleDateString()}</p>
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
+                        <button onClick={() => setSelectedIntake(intake)} className="text-sm px-4 py-2.5 rounded-xl border border-neutral-300 text-neutral-700 hover:border-neutral-900">View</button>
+                        <button onClick={() => { setEditingIntake(intake); setView("new-intake"); }} className="text-sm px-4 py-2.5 rounded-xl border border-neutral-300 text-neutral-700 hover:border-neutral-900">Edit</button>
+                        {intake.status !== "ready" && <button onClick={() => updateIntake(intake, { status: "ready", deckStatus: "ready_to_generate" }).catch((error) => setFeedback({ kind: "error", message: error.message }))} className="text-sm px-4 py-2.5 rounded-xl border border-emerald-200 text-emerald-700 hover:bg-emerald-50">Mark Ready</button>}
                         <button onClick={() => handleSelectIntake(intake)} className={`text-sm px-5 py-2.5 rounded-xl font-medium transition-colors ${useIntakeData ? "bg-neutral-900 text-white hover:bg-neutral-800" : "border border-neutral-300 text-neutral-700 hover:border-neutral-900"}`}>
                           {useIntakeData ? "✦ Generate →" : "Open Template →"}
                         </button>
-                        <button onClick={() => { if (confirm(`Delete "${intake.name}"?`)) { removeIntake(intake.id); setIntakes(getIntakes()); } }} className="text-xs px-3 py-2 rounded-xl border border-red-200 text-red-400 hover:bg-red-50 transition-colors opacity-0 group-hover:opacity-100">✕</button>
+                        <button onClick={() => { if (confirm(`Delete "${intake.name}"?`)) deleteIntake(intake); }} className="text-xs px-3 py-2 rounded-xl border border-red-200 text-red-400 hover:bg-red-50 transition-colors opacity-0 group-hover:opacity-100">✕</button>
                       </div>
                     </motion.div>
                   ))}
                 </div>
               );
             })()}
+            {selectedIntake && (
+              <div className="mt-6 rounded-2xl border border-neutral-300 bg-white p-6">
+                <div className="flex items-start justify-between gap-4"><div><p className="font-geist-mono text-[10px] uppercase tracking-widest text-neutral-400">Full Intake Response</p><h3 className="mt-1 text-xl font-semibold">{selectedIntake.companyName}</h3></div><button onClick={() => setSelectedIntake(null)} aria-label="Close">×</button></div>
+                <dl className="mt-5 grid gap-4 sm:grid-cols-2 text-sm">
+                  {(["objective", "whyNow", "geography", "audience", "budget", "competitors", "usp", "notes"] as const).map((key) => <div key={key}><dt className="font-geist-mono text-[10px] uppercase tracking-wider text-neutral-400">{key}</dt><dd className="mt-1 whitespace-pre-wrap text-neutral-700">{selectedIntake[key] || "—"}</dd></div>)}
+                  <div><dt className="font-geist-mono text-[10px] uppercase tracking-wider text-neutral-400">Channels</dt><dd className="mt-1 text-neutral-700">{selectedIntake.channels.join(", ")}</dd></div>
+                  <div><dt className="font-geist-mono text-[10px] uppercase tracking-wider text-neutral-400">Status</dt><dd className="mt-1 text-neutral-700">{selectedIntake.status} · {selectedIntake.deckStatus} · score {selectedIntake.leadScore}</dd></div>
+                </dl>
+              </div>
+            )}
           </>
         )}
 
         {/* ── NEW INTAKE ── */}
         {view === "new-intake" && (
           <>
-            <button onClick={() => setView("intake-select")} className="mb-6 text-sm text-neutral-500 hover:text-neutral-900 transition-colors flex items-center gap-1.5">← Back to Client Profiles</button>
-            <p className="font-geist-mono text-xs uppercase tracking-[0.25em] text-neutral-400">New Profile</p>
+            <button onClick={() => { setEditingIntake(null); setView("intake-select"); }} className="mb-6 text-sm text-neutral-500 hover:text-neutral-900 transition-colors flex items-center gap-1.5">← Back to Client Profiles</button>
+            <p className="font-geist-mono text-xs uppercase tracking-[0.25em] text-neutral-400">{editingIntake ? "Edit Profile" : "New Profile"}</p>
             <h2 className="font-ggx88 text-4xl mt-2 mb-8">Discovery Intake</h2>
-            <IntakeForm onSubmit={handleNewIntake} onCancel={() => setView("intake-select")} />
+            <IntakeForm key={editingIntake?.id ?? "new"} initialData={editingIntake?.formData} onSubmit={handleNewIntake} onCancel={() => { setEditingIntake(null); setView("intake-select"); }} />
           </>
         )}
 

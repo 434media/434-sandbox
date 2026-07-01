@@ -1,19 +1,10 @@
+import type { IntakeData } from "@/lib/cms/types";
+
 /* ================================================================== */
 /*  Deck Generator — Shared Type Definitions                           */
 /* ================================================================== */
 
-export interface IntakeFormData {
-  companyName: string;
-  objective: string;
-  whyNow: string;
-  geography: string;
-  audience: string;
-  channels: string[];
-  budget: string;
-  competitors: string;
-  usp: string;
-  notes: string;
-}
+export type IntakeFormData = IntakeData;
 
 /* Per-slide content interfaces — keys match SlideData.texts in CMS */
 

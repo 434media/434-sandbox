@@ -21,6 +21,7 @@ import {
   type Grade,
   type SearchedProspect,
 } from "./lib/pipeline";
+import type { AnalyticsMetrics } from "@/lib/cms/types";
 
 /* ---- Types ---- */
 type Tab = "overview" | "prospects" | "automation";
@@ -1239,10 +1240,17 @@ export default function ProspectDiscoveryPage() {
   const [isScanning, setIsScanning] = useState(false);
   const [selectedProspect, setSelectedProspect] = useState<Prospect | null>(null);
   const [detailModalOpen, setDetailModalOpen] = useState(false);
+  const [cmsMetrics, setCmsMetrics] = useState<AnalyticsMetrics | null>(null);
+  const [metricsError, setMetricsError] = useState("");
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     document.documentElement.classList.remove("dark");
+    fetch("/api/analytics").then(async (response) => {
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "Unable to load intake analytics.");
+      setCmsMetrics(result.metrics);
+    }).catch((error) => setMetricsError(error instanceof Error ? error.message : "Unable to load intake analytics."));
   }, []);
 
   const baseProspects = useMemo(() => generateProspects(120, seed), [seed]);
@@ -1312,6 +1320,19 @@ export default function ProspectDiscoveryPage() {
             </button>
           </div>
         </motion.div>
+
+        <div className="mb-5 rounded-xl border border-neutral-200 bg-white p-5 shadow-sm">
+          <div className="mb-3"><h2 className="text-base font-medium">CMS intake pipeline</h2><p className="text-xs text-neutral-400">Live Firestore submissions and generated deck activity</p></div>
+          {metricsError ? <p className="text-sm text-red-600">{metricsError}</p> : !cmsMetrics ? <p className="text-sm text-neutral-500">Loading intake analytics…</p> : (
+            <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
+              <KpiCard label="Total submissions" value={String(cmsMetrics.totalSubmissions)} />
+              <KpiCard label="New leads" value={String(cmsMetrics.newLeads)} />
+              <KpiCard label="Ready for deck" value={String(cmsMetrics.readyToGenerate)} />
+              <KpiCard label="Generated decks" value={String(cmsMetrics.generatedDecks)} />
+              <KpiCard label="Average lead score" value={String(cmsMetrics.averageLeadScore)} accent />
+            </div>
+          )}
+        </div>
 
         {/* Morning Summary – only on Overview */}
         {tab === "overview" && (

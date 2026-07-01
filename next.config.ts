@@ -3,7 +3,7 @@ import type { NextConfig } from "next"
 const nextConfig: NextConfig = {
   // Chromium must stay as a real Node dependency so its compressed binaries
   // are copied into the serverless function instead of relocated by Turbopack.
-  serverExternalPackages: ["@sparticuz/chromium", "puppeteer-core"],
+  serverExternalPackages: ["@sparticuz/chromium", "puppeteer-core", "firebase-admin"],
   outputFileTracingIncludes: {
     "/api/generate-pdf": ["./node_modules/@sparticuz/chromium/bin/**"],
     "/api/email-pdf": ["./node_modules/@sparticuz/chromium/bin/**"],

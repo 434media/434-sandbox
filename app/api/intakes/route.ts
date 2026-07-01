@@ -1,0 +1,38 @@
+import { FieldValue } from "firebase-admin/firestore";
+import { adminDb } from "@/lib/firebase/admin";
+import { parseIntakeData, scoreIntake } from "@/lib/cms/validation";
+import type { DeckStatus, IntakeSubmission, LeadStatus } from "@/lib/cms/types";
+
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+const collection = "intakeSubmissions";
+
+function serialize(id: string, data: FirebaseFirestore.DocumentData): IntakeSubmission {
+  const iso = (value: unknown) => value && typeof value === "object" && "toDate" in value
+    ? (value as FirebaseFirestore.Timestamp).toDate().toISOString()
+    : String(value ?? new Date().toISOString());
+  return { id, ...data, createdAt: iso(data.createdAt), updatedAt: iso(data.updatedAt) } as IntakeSubmission;
+}
+
+export async function GET() {
+  try {
+    const snapshot = await adminDb().collection(collection).orderBy("createdAt", "desc").limit(250).get();
+    return Response.json({ intakes: snapshot.docs.map((doc) => serialize(doc.id, doc.data())) });
+  } catch (error) {
+    return Response.json({ error: error instanceof Error ? error.message : "Unable to load intake submissions." }, { status: 500 });
+  }
+}
+
+export async function POST(request: Request) {
+  try {
+    const data = parseIntakeData(await request.json());
+    const source = request.headers.get("x-intake-source") === "cms" ? "cms" : "intake-form";
+    const record = { ...data, status: "new" as LeadStatus, source, leadScore: scoreIntake(data), deckStatus: "not_started" as DeckStatus, createdAt: FieldValue.serverTimestamp(), updatedAt: FieldValue.serverTimestamp() };
+    const ref = await adminDb().collection(collection).add(record);
+    const saved = await ref.get();
+    return Response.json({ intake: serialize(saved.id, saved.data()!) }, { status: 201 });
+  } catch (error) {
+    return Response.json({ error: error instanceof Error ? error.message : "Unable to save intake submission." }, { status: 400 });
+  }
+}
+
