@@ -578,7 +578,13 @@ function SlideAccordion({
 
         return (
           <div key={meta.id} className="rounded-2xl border border-neutral-200 overflow-hidden bg-white">
-            <button type="button" className="w-full flex items-center gap-4 px-5 py-4 text-left hover:bg-neutral-50 transition-colors" onClick={() => setOpenId(isOpen ? null : meta.id)}>
+            <div
+              role="button"
+              tabIndex={0}
+              className="w-full flex items-center gap-4 px-5 py-4 text-left hover:bg-neutral-50 transition-colors cursor-pointer"
+              onClick={() => setOpenId(isOpen ? null : meta.id)}
+              onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setOpenId(isOpen ? null : meta.id); } }}
+            >
               <span className="font-geist-mono text-xs text-neutral-400 w-6 shrink-0">{String(idx + 1).padStart(2, "0")}</span>
               <span className="flex-1 font-medium text-neutral-900">Slide {idx + 1} — {meta.label}</span>
               <span className={`text-[10px] font-geist-mono px-2 py-0.5 rounded-full ${filled === meta.fields.length ? "bg-emerald-100 text-emerald-700" : "bg-neutral-100 text-neutral-500"}`}>{filled}/{meta.fields.length}</span>
@@ -588,7 +594,7 @@ function SlideAccordion({
                 </button>
               )}
               <span className="text-neutral-400 text-xl font-light leading-none w-4 text-center">{isOpen ? "−" : "+"}</span>
-            </button>
+            </div>
             <AnimatePresence initial={false}>
               {isOpen && (
                 <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }} className="overflow-hidden">

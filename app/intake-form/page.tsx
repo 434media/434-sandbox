@@ -70,11 +70,6 @@ const sectionVariants: Variants = {
   },
 };
 
-const fieldVariants: Variants = {
-  hidden: { opacity: 0, y: 14 },
-  visible: { opacity: 1, y: 0 },
-};
-
 /* ------------------------------------------------------------------ */
 /*  Primitives                                                        */
 /* ------------------------------------------------------------------ */
@@ -95,7 +90,7 @@ function FieldShell({
   children: ReactNode;
 }) {
   return (
-    <motion.label variants={fieldVariants} className="block">
+    <label className="block">
       <span className="mb-1.5 block font-geist-mono text-[11px] uppercase tracking-[0.18em] text-neutral-500">
         {label}
         {required && <span className="ml-1 text-neutral-900">*</span>}
@@ -113,7 +108,7 @@ function FieldShell({
           </motion.span>
         )}
       </AnimatePresence>
-    </motion.label>
+    </label>
   );
 }
 
@@ -121,10 +116,14 @@ function Section({
   index,
   title,
   children,
+  open,
+  onOpen,
 }: {
   index: string;
   title: string;
   children: ReactNode;
+  open: boolean;
+  onOpen: () => void;
 }) {
   return (
     <motion.div
@@ -132,16 +131,49 @@ function Section({
       initial="hidden"
       whileInView="visible"
       viewport={{ once: true, amount: 0.2 }}
-      className="rounded-3xl border border-neutral-200 p-8 shadow-sm"
+      className="overflow-hidden rounded-3xl border border-neutral-200 shadow-sm"
     >
-      <div className="mb-6 flex items-baseline gap-3">
+      <button
+        type="button"
+        onClick={onOpen}
+        aria-expanded={open}
+        className="flex w-full items-center gap-3 p-8 text-left transition-colors hover:bg-neutral-50"
+      >
         <span className="font-geist-mono text-xs text-neutral-400">{index}</span>
-        <h2 className="font-ggx88 text-3xl">{title}</h2>
-      </div>
-      {children}
+        <h2 className="flex-1 font-ggx88 text-3xl">{title}</h2>
+        <span className="text-2xl font-light text-neutral-400">{open ? "−" : "+"}</span>
+      </button>
+      <AnimatePresence initial={false}>
+        {open && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
+            className="overflow-hidden"
+          >
+            <div className="border-t border-neutral-100 px-8 pb-8 pt-6">{children}</div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 }
+
+type SectionKey = "00" | "01" | "02" | "03";
+
+const fieldSection: Record<keyof FormState, SectionKey> = {
+  companyName: "00",
+  objective: "01",
+  whyNow: "01",
+  geography: "01",
+  audience: "01",
+  channels: "02",
+  budget: "02",
+  competitors: "03",
+  usp: "03",
+  notes: "03",
+};
 
 /* ------------------------------------------------------------------ */
 /*  Page                                                              */
@@ -151,6 +183,7 @@ export default function IntakeFormPage() {
   const [submitted, setSubmitted] = useState(false);
   const [form, setForm] = useState<FormState>(initialForm);
   const [errors, setErrors] = useState<Set<keyof FormState>>(new Set());
+  const [activeSection, setActiveSection] = useState<SectionKey | null>("00");
   const [submitError, setSubmitError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const formTopRef = useRef<HTMLDivElement>(null);
@@ -189,9 +222,12 @@ export default function IntakeFormPage() {
     });
     if (missing.length) {
       setErrors(new Set(missing));
-      document
-        .querySelector(`[data-field="${missing[0]}"]`)
-        ?.scrollIntoView({ behavior: "smooth", block: "center" });
+      setActiveSection(fieldSection[missing[0]]);
+      requestAnimationFrame(() =>
+        document
+          .querySelector(`[data-field="${missing[0]}"]`)
+          ?.scrollIntoView({ behavior: "smooth", block: "center" })
+      );
       return;
     }
     setErrors(new Set());
@@ -205,9 +241,7 @@ export default function IntakeFormPage() {
       formTopRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
     } catch (error) {
       setSubmitError(error instanceof Error ? error.message : "Unable to submit intake.");
-    } finally {
-      setIsSubmitting(false);
-    }
+    } finally { setIsSubmitting(false); }
   };
 
   const err = (k: keyof FormState) => errors.has(k);
@@ -219,7 +253,7 @@ export default function IntakeFormPage() {
       <div ref={formTopRef} className="mx-auto max-w-3xl">
         {/* HEADER */}
         <p className="font-geist-mono text-xs uppercase tracking-[0.25em] text-neutral-500">
-          434 Media · Client Success Tool
+          434 Media · Client Success Tool · MARKER12345
         </p>
         <h1 className="mt-4 font-ggx88 text-5xl md:text-7xl">
           <ScrambleText text="Discovery Intake" scrambleOnMount duration={28} />
@@ -238,6 +272,13 @@ export default function IntakeFormPage() {
               transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
               className="mt-12 rounded-3xl bg-neutral-900 p-12 text-white"
             >
+              <Section index="00" title="Client Info" open={activeSection === "00"} onOpen={() => setActiveSection((current) => current === "00" ? null : "00")}>
+                <div data-field="companyName">
+                  <FieldShell label="Client / Company Name" required error={err("companyName")}>
+                    <input type="text" className={field("companyName")} placeholder="e.g. TXMX Boxing…" value={form.companyName} onChange={(e) => update("companyName", e.target.value)} />
+                  </FieldShell>
+                </div>
+              </Section>
               <p className="font-geist-mono text-xs uppercase tracking-[0.25em] text-neutral-400">
                 Submitted
               </p>
@@ -258,15 +299,8 @@ export default function IntakeFormPage() {
               exit={{ opacity: 0 }}
               className="mt-12 space-y-6"
             >
-              <Section index="00" title="Client">
-                <div data-field="companyName">
-                  <FieldShell label="Company / Client Name" required error={err("companyName")}>
-                    <input className={field("companyName")} placeholder="Company name" value={form.companyName} onChange={(e) => update("companyName", e.target.value)} />
-                  </FieldShell>
-                </div>
-              </Section>
               {/* 01 — THE OPPORTUNITY */}
-              <Section index="01" title="The Opportunity">
+              <Section index="01" title="The Opportunity" open={activeSection === "01"} onOpen={() => setActiveSection((current) => current === "01" ? null : "01")}>
                 <div className="space-y-5">
                   <div data-field="objective">
                     <FieldShell label="Primary Objective" required error={err("objective")}>
@@ -329,7 +363,7 @@ export default function IntakeFormPage() {
               </Section>
 
               {/* 02 — MEDIA PLAN INPUTS */}
-              <Section index="02" title="Media Plan Inputs">
+              <Section index="02" title="Media Plan Inputs" open={activeSection === "02"} onOpen={() => setActiveSection((current) => current === "02" ? null : "02")}>
                 <div data-field="channels">
                   <FieldShell label="Channels of Interest" required error={err("channels")}>
                     <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
@@ -383,7 +417,7 @@ export default function IntakeFormPage() {
               </Section>
 
               {/* 03 — SHARPEN THE PITCH */}
-              <Section index="03" title="Sharpen the Pitch">
+              <Section index="03" title="Sharpen the Pitch" open={activeSection === "03"} onOpen={() => setActiveSection((current) => current === "03" ? null : "03")}>
                 <div className="space-y-5">
                   <FieldShell label="Competitors">
                     <textarea

@@ -1,4 +1,5 @@
-import { adminDb } from "@/lib/firebase/admin";
+import { adminDb, firestoreConfigured } from "@/lib/firebase/admin";
+import { mockStore } from "@/lib/cms/mock-store";
 import type { AnalyticsMetrics, IntakeSubmission } from "@/lib/cms/types";
 
 export const runtime = "nodejs";
@@ -6,6 +7,11 @@ export const dynamic = "force-dynamic";
 
 export async function GET() {
   try {
+    if (!firestoreConfigured()) {
+      const { intakes, projects } = mockStore();
+      const metrics: AnalyticsMetrics = { totalSubmissions: intakes.length, newLeads: intakes.filter((lead) => lead.status === "new").length, readyToGenerate: intakes.filter((lead) => lead.deckStatus === "ready_to_generate").length, generatedDecks: projects.filter((project) => project.sourceMode === "intake").length, averageLeadScore: intakes.length ? Math.round(intakes.reduce((sum, lead) => sum + lead.leadScore, 0) / intakes.length) : 0 };
+      return Response.json({ metrics, mode: "demo" });
+    }
     const [intakes, projects] = await Promise.all([
       adminDb().collection("intakeSubmissions").get(),
       adminDb().collection("cmsProjects").get(),
