@@ -1057,7 +1057,7 @@ export default function CMSPage() {
       <div className="max-w-4xl mx-auto px-6 py-10">
         <div className="mb-10">
           <p className="font-geist-mono text-xs uppercase tracking-[0.3em] text-neutral-400">434 Media</p>
-          <h1 className="font-ggx88 text-4xl md:text-5xl mt-1">Content Management System</h1>
+          <h1 className="font-ggx88 text-4xl md:text-5xl mt-1">Content Management System - Sales Deck</h1>
         </div>
         {isLoadingData && <div className="mb-6 rounded-2xl border border-neutral-200 bg-white p-5 text-sm text-neutral-500">Loading projects and intake submissions…</div>}
         {dataError && <div role="alert" className="mb-6 rounded-2xl border border-red-200 bg-red-50 p-5 text-sm text-red-700">{dataError}</div>}
