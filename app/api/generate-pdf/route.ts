@@ -10,7 +10,7 @@ export async function POST(request: Request) {
     if (!payload.projectName?.trim() || !Array.isArray(payload.slideData) || payload.slideData.length !== 12) {
       return Response.json({ error: "A project name and all 12 slides are required." }, { status: 400 });
     }
-    const pdf = await generateDeckPdf(payload, new URL(request.url).origin);
+    const pdf = await generateDeckPdf(payload);
     const filename = safePdfFilename(payload.projectName);
     return new Response(new Uint8Array(pdf), {
       headers: {

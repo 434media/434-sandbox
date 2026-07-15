@@ -8,13 +8,17 @@ export const dynamic = "force-dynamic";
 export async function POST(request: Request) {
   try {
     const payload = await request.json() as EmailDeckRequest;
-    if (!payload.clientName?.trim() || !/^\S+@\S+\.\S+$/.test(payload.clientEmail || "")) {
+    // Non-ambiguous email check (each segment excludes its own delimiters) plus a
+    // length cap — avoids the polynomial backtracking of an \S+@\S+\.\S+ pattern.
+    const email = (payload.clientEmail ?? "").trim();
+    const emailValid = email.length <= 254 && /^[^\s@]+@[^\s@.]+(?:\.[^\s@.]+)+$/.test(email);
+    if (!payload.clientName?.trim() || !emailValid) {
       return Response.json({ error: "A valid client name and email are required." }, { status: 400 });
     }
     if (!payload.projectName?.trim() || !Array.isArray(payload.slideData) || payload.slideData.length !== 12) {
       return Response.json({ error: "The project is missing deck data." }, { status: 400 });
     }
-    const pdf = await generateDeckPdf(payload, new URL(request.url).origin);
+    const pdf = await generateDeckPdf(payload);
     const providerId = await sendDeckEmail({ ...payload, filename: safePdfFilename(payload.projectName), pdf });
     console.info("[Deck email sent]", { projectId: payload.projectId, recipient: payload.clientEmail, providerId });
     return Response.json({ ok: true, providerId });

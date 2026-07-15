@@ -19,7 +19,18 @@ async function localChromeExecutable(): Promise<string | null> {
   return null;
 }
 
-export async function generateDeckPdf(payload: DeckExportPayload, origin: string): Promise<Buffer> {
+// Resolve the render target from trusted server config only. Never derive it
+// from the incoming request's origin/Host header — that is client-controllable
+// and would let a caller point the headless browser at an internal address (SSRF).
+function deckExportOrigin(): string {
+  const configured = process.env.DECK_EXPORT_ORIGIN?.trim();
+  if (configured) return configured.replace(/\/+$/, "");
+  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
+  return "http://localhost:3000";
+}
+
+export async function generateDeckPdf(payload: DeckExportPayload): Promise<Buffer> {
+  const origin = deckExportOrigin();
   const localExecutable = await localChromeExecutable();
   const browser = await puppeteer.launch({
     executablePath: localExecutable ?? await chromium.executablePath(),
@@ -68,6 +79,9 @@ export async function generateDeckPdf(payload: DeckExportPayload, origin: string
 }
 
 export function safePdfFilename(projectName: string): string {
-  const clean = projectName.trim().replace(/[^a-zA-Z0-9]+/g, "_").replace(/^_+|_+$/g, "");
+  // The first replace collapses every run of non-alphanumerics to a single "_",
+  // so at most one leading/trailing "_" can remain — a plain "_" (no "+"
+  // quantifier) strips it without the polynomial backtracking CodeQL flags.
+  const clean = projectName.trim().replace(/[^a-zA-Z0-9]+/g, "_").replace(/^_|_$/g, "");
   return `${clean || "Pitch_Deck"}.pdf`;
 }
