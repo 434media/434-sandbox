@@ -3,6 +3,7 @@ import { adminDb, firestoreConfigured } from "@/lib/firebase/admin";
 import { mockId, mockStore } from "@/lib/cms/mock-store";
 import { parseIntakeData, scoreIntake } from "@/lib/cms/validation";
 import type { DeckStatus, IntakeSubmission, LeadStatus } from "@/lib/cms/types";
+import { logAppEvent, withApiLogging } from "@/lib/splunk/api-logging";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -15,7 +16,7 @@ function serialize(id: string, data: FirebaseFirestore.DocumentData): IntakeSubm
   return { id, ...data, createdAt: iso(data.createdAt), updatedAt: iso(data.updatedAt) } as IntakeSubmission;
 }
 
-export async function GET() {
+export const GET = withApiLogging("/api/intakes", async function GET() {
   try {
     if (!firestoreConfigured()) return Response.json({ intakes: mockStore().intakes, mode: "demo" });
     const snapshot = await adminDb().collection(collection).orderBy("createdAt", "desc").limit(250).get();
@@ -23,9 +24,9 @@ export async function GET() {
   } catch (error) {
     return Response.json({ error: error instanceof Error ? error.message : "Unable to load intake submissions." }, { status: 500 });
   }
-}
+});
 
-export async function POST(request: Request) {
+export const POST = withApiLogging("/api/intakes", async function POST(request: Request) {
   try {
     const data = parseIntakeData(await request.json());
     const source = request.headers.get("x-intake-source") === "cms" ? "cms" : "intake-form";
@@ -33,13 +34,16 @@ export async function POST(request: Request) {
       const timestamp = new Date().toISOString();
       const intake: IntakeSubmission = { id: mockId("intake"), ...data, status: "new", source, leadScore: scoreIntake(data), deckStatus: "not_started", createdAt: timestamp, updatedAt: timestamp };
       mockStore().intakes.unshift(intake);
+      logAppEvent("intake_form_submission", { route: "/api/intakes", source, mode: "demo", lead_score: intake.leadScore });
       return Response.json({ intake, mode: "demo" }, { status: 201 });
     }
     const record = { ...data, status: "new" as LeadStatus, source, leadScore: scoreIntake(data), deckStatus: "not_started" as DeckStatus, createdAt: FieldValue.serverTimestamp(), updatedAt: FieldValue.serverTimestamp() };
     const ref = await adminDb().collection(collection).add(record);
     const saved = await ref.get();
+    logAppEvent("intake_form_submission", { route: "/api/intakes", source, mode: "firestore", lead_score: record.leadScore });
     return Response.json({ intake: serialize(saved.id, saved.data()!) }, { status: 201 });
   } catch (error) {
+    logAppEvent("api_error", { route: "/api/intakes", operation: "create_intake", error_message: error instanceof Error ? error.message : "Unable to save intake submission." });
     return Response.json({ error: error instanceof Error ? error.message : "Unable to save intake submission." }, { status: 400 });
   }
-}
+});

@@ -53,7 +53,7 @@ const requiredFields: (keyof FormState)[] = [
 ];
 
 const emptyForm: FormState = {
-  companyName: "", objective: "", whyNow: "", geography: "", audience: "",
+  companyName: "", websiteUrl: "", objective: "", whyNow: "", geography: "", audience: "",
   channels: [], budget: "", competitors: "", usp: "", notes: "",
 };
 
@@ -632,7 +632,7 @@ function IntakeForm({ onSubmit, onCancel, initialData = emptyForm }: { onSubmit:
   const err = (k: keyof FormState) => errors.has(k);
   const fc = (k: keyof FormState) => baseField + (err(k) ? " border-red-500" : "");
   const handleSubmit = () => {
-    const missing = requiredFields.filter((k) => { const v = form[k]; return Array.isArray(v) ? v.length === 0 : !v.trim(); });
+    const missing = requiredFields.filter((k) => { const v = form[k]; return Array.isArray(v) ? v.length === 0 : typeof v !== "string" || !v.trim(); });
     if (missing.length) { setErrors(new Set(missing)); return; }
     onSubmit(form);
   };
@@ -644,6 +644,10 @@ function IntakeForm({ onSubmit, onCancel, initialData = emptyForm }: { onSubmit:
         <label className="block">
           <span className="mb-1.5 block font-geist-mono text-[10px] uppercase tracking-widest text-neutral-500">Client / Company Name{err("companyName") && <span className="text-red-500 ml-1">*</span>}</span>
           <input type="text" className={fc("companyName")} placeholder="e.g. TXMX Boxing…" value={form.companyName} onChange={(e) => update("companyName", e.target.value)} />
+        </label>
+        <label className="mt-5 block">
+          <span className="mb-1.5 block font-geist-mono text-[10px] uppercase tracking-widest text-neutral-500">Website URL</span>
+          <input type="url" className={fc("websiteUrl")} placeholder="https://example.com" value={form.websiteUrl ?? ""} onChange={(e) => update("websiteUrl", e.target.value)} />
         </label>
       </div>
       <div className="rounded-2xl border border-neutral-200 p-6">
@@ -906,8 +910,12 @@ export default function CMSPage() {
       const filename = disposition.match(/filename="([^"]+)"/)?.[1] || "Pitch_Deck.pdf";
       const url = URL.createObjectURL(blob);
       const anchor = document.createElement("a");
-      anchor.href = url; anchor.download = filename; anchor.click();
-      URL.revokeObjectURL(url);
+      anchor.href = url;
+      anchor.download = filename;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
       setFeedback({ kind: "success", message: `${filename} downloaded.` });
     } catch (error) {
       setFeedback({ kind: "error", message: error instanceof Error ? error.message : "PDF generation failed." });
@@ -1139,7 +1147,7 @@ export default function CMSPage() {
             </div>
             {(() => {
               const q = intakeSearch.toLowerCase();
-              const filtered = intakes.filter((i) => i.name.toLowerCase().includes(q) || i.objective.toLowerCase().includes(q) || (i.geography ?? "").toLowerCase().includes(q));
+              const filtered = intakes.filter((i) => i.name.toLowerCase().includes(q) || i.objective.toLowerCase().includes(q) || (i.geography ?? "").toLowerCase().includes(q) || (i.websiteUrl ?? "").toLowerCase().includes(q));
               return filtered.length === 0 ? (
                 <div className="rounded-2xl border border-dashed border-neutral-300 p-12 text-center">
                   <p className="text-neutral-400 text-sm mb-4">{intakes.length === 0 ? "No client profiles saved yet." : "No results match your search."}</p>
@@ -1172,7 +1180,7 @@ export default function CMSPage() {
               <div className="mt-6 rounded-2xl border border-neutral-300 bg-white p-6">
                 <div className="flex items-start justify-between gap-4"><div><p className="font-geist-mono text-[10px] uppercase tracking-widest text-neutral-400">Full Intake Response</p><h3 className="mt-1 text-xl font-semibold">{selectedIntake.companyName}</h3></div><button onClick={() => setSelectedIntake(null)} aria-label="Close">×</button></div>
                 <dl className="mt-5 grid gap-4 sm:grid-cols-2 text-sm">
-                  {(["objective", "whyNow", "geography", "audience", "budget", "competitors", "usp", "notes"] as const).map((key) => <div key={key}><dt className="font-geist-mono text-[10px] uppercase tracking-wider text-neutral-400">{key}</dt><dd className="mt-1 whitespace-pre-wrap text-neutral-700">{selectedIntake[key] || "—"}</dd></div>)}
+                  {(["websiteUrl", "objective", "whyNow", "geography", "audience", "budget", "competitors", "usp", "notes"] as const).map((key) => <div key={key}><dt className="font-geist-mono text-[10px] uppercase tracking-wider text-neutral-400">{key}</dt><dd className="mt-1 whitespace-pre-wrap text-neutral-700">{selectedIntake[key] || "—"}</dd></div>)}
                   <div><dt className="font-geist-mono text-[10px] uppercase tracking-wider text-neutral-400">Channels</dt><dd className="mt-1 text-neutral-700">{selectedIntake.channels.join(", ")}</dd></div>
                   <div><dt className="font-geist-mono text-[10px] uppercase tracking-wider text-neutral-400">Status</dt><dd className="mt-1 text-neutral-700">{selectedIntake.status} · {selectedIntake.deckStatus} · score {selectedIntake.leadScore}</dd></div>
                 </dl>

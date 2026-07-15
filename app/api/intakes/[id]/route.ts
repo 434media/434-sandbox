@@ -3,12 +3,13 @@ import { adminDb, firestoreConfigured } from "@/lib/firebase/admin";
 import { mockStore } from "@/lib/cms/mock-store";
 import { parseIntakeData, scoreIntake } from "@/lib/cms/validation";
 import type { DeckStatus, LeadStatus } from "@/lib/cms/types";
+import { logAppEvent, withApiLogging } from "@/lib/splunk/api-logging";
 
 export const runtime = "nodejs";
 const leadStatuses: LeadStatus[] = ["new", "qualified", "ready", "archived"];
 const deckStatuses: DeckStatus[] = ["not_started", "ready_to_generate", "generated"];
 
-export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
+export const PATCH = withApiLogging("/api/intakes/[id]", async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
     const body = await request.json() as Record<string, unknown>;
@@ -30,11 +31,12 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     await adminDb().collection("intakeSubmissions").doc(id).update(update);
     return Response.json({ ok: true });
   } catch (error) {
+    logAppEvent("api_error", { route: "/api/intakes/[id]", operation: "update_intake", error_message: error instanceof Error ? error.message : "Unable to update intake." });
     return Response.json({ error: error instanceof Error ? error.message : "Unable to update intake." }, { status: 400 });
   }
-}
+});
 
-export async function DELETE(_: Request, { params }: { params: Promise<{ id: string }> }) {
+export const DELETE = withApiLogging("/api/intakes/[id]", async function DELETE(_: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
     if (!firestoreConfigured()) {
@@ -45,6 +47,7 @@ export async function DELETE(_: Request, { params }: { params: Promise<{ id: str
     await adminDb().collection("intakeSubmissions").doc(id).delete();
     return Response.json({ ok: true });
   } catch (error) {
+    logAppEvent("api_error", { route: "/api/intakes/[id]", operation: "delete_intake", error_message: error instanceof Error ? error.message : "Unable to delete intake." });
     return Response.json({ error: error instanceof Error ? error.message : "Unable to delete intake." }, { status: 500 });
   }
-}
+});

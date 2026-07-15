@@ -1,11 +1,12 @@
 import { generateDeckPdf, safePdfFilename } from "@/lib/deck-export/pdf";
 import type { EmailDeckRequest } from "@/lib/deck-export/types";
 import { sendDeckEmail } from "@/lib/email/send-deck-email";
+import { logAppEvent, withApiLogging } from "@/lib/splunk/api-logging";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-export async function POST(request: Request) {
+export const POST = withApiLogging("/api/email-pdf", async function POST(request: Request) {
   try {
     const payload = await request.json() as EmailDeckRequest;
     // Non-ambiguous email check (each segment excludes its own delimiters) plus a
@@ -21,9 +22,11 @@ export async function POST(request: Request) {
     const pdf = await generateDeckPdf(payload);
     const providerId = await sendDeckEmail({ ...payload, filename: safePdfFilename(payload.projectName), pdf });
     console.info("[Deck email sent]", { projectId: payload.projectId, recipient: payload.clientEmail, providerId });
+    logAppEvent("pdf_generation", { route: "/api/email-pdf", project_id: payload.projectId, delivery: "email", slide_count: payload.slideData.length });
     return Response.json({ ok: true, providerId });
   } catch (error) {
     console.error("[Deck email]", error);
+    logAppEvent("server_error", { route: "/api/email-pdf", operation: "email_pdf", error_message: error instanceof Error ? error.message : "Email delivery failed." });
     return Response.json({ error: error instanceof Error ? error.message : "Email delivery failed." }, { status: 500 });
   }
-}
+});

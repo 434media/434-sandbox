@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import type { IntakeFormData, GeneratedDeckContent } from "@/lib/deck-generator/types";
 import { buildFallbackDeck } from "@/lib/deck-generator/fallback";
+import { logAppEvent, withApiLogging } from "@/lib/splunk/api-logging";
 
 /* ================================================================== */
 /*  Prompt construction                                                 */
@@ -37,6 +38,7 @@ function buildPrompt(intake: IntakeFormData): string {
   return `Generate a pitch deck for this client:
 
 Company: ${intake.companyName || "the client"}
+Website: ${intake.websiteUrl || "not specified"}
 Objective: ${intake.objective}
 Why Now: ${intake.whyNow}
 Geography: ${intake.geography}
@@ -138,7 +140,7 @@ function validateDeckContent(data: unknown): data is GeneratedDeckContent {
 /*  Route handler                                                       */
 /* ================================================================== */
 
-export async function POST(req: NextRequest) {
+export const POST = withApiLogging("/api/generate-deck", async function POST(req: NextRequest) {
   let intake: IntakeFormData;
   try {
     const body = await req.json();
@@ -153,6 +155,7 @@ export async function POST(req: NextRequest) {
 
   const apiKey = process.env.GOOGLE_AI_API_KEY;
   if (!apiKey) {
+    logAppEvent("ai_generation", { route: "/api/generate-deck", source: "fallback", reason: "missing_api_key" });
     return NextResponse.json({
       deck: buildFallbackDeck(intake),
       source: "fallback",
@@ -211,6 +214,7 @@ export async function POST(req: NextRequest) {
         continue;
       }
 
+      logAppEvent("ai_generation", { route: "/api/generate-deck", source: "ai", attempts: attempt + 1 });
       return NextResponse.json({ deck: parsed, source: "ai" });
     } catch (err) {
       lastError = err instanceof Error ? err.message : "Unknown error";
@@ -218,9 +222,10 @@ export async function POST(req: NextRequest) {
   }
 
   console.error("[generate-deck] All retries failed:", lastError);
+  logAppEvent("ai_generation", { route: "/api/generate-deck", source: "fallback", reason: "ai_generation_failed", error_message: lastError });
   return NextResponse.json({
     deck: buildFallbackDeck(intake),
     source: "fallback",
     warning: `AI generation failed (${lastError}) — using template-based fallback.`,
   });
-}
+});

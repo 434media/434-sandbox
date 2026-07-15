@@ -36,6 +36,7 @@ type FormState = IntakeData;
 
 const initialForm: FormState = {
   companyName: "",
+  websiteUrl: "",
   objective: "",
   whyNow: "",
   geography: "",
@@ -164,6 +165,7 @@ type SectionKey = "00" | "01" | "02" | "03";
 
 const fieldSection: Record<keyof FormState, SectionKey> = {
   companyName: "00",
+  websiteUrl: "00",
   objective: "01",
   whyNow: "01",
   geography: "01",
@@ -218,7 +220,7 @@ export default function IntakeFormPage() {
   const handleSubmit = async () => {
     const missing = requiredFields.filter((key) => {
       const v = form[key];
-      return Array.isArray(v) ? v.length === 0 : v.trim() === "";
+      return Array.isArray(v) ? v.length === 0 : typeof v !== "string" || v.trim() === "";
     });
     if (missing.length) {
       setErrors(new Set(missing));
@@ -272,13 +274,6 @@ export default function IntakeFormPage() {
               transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
               className="mt-12 rounded-3xl bg-neutral-900 p-12 text-white"
             >
-              <Section index="00" title="Client Info" open={activeSection === "00"} onOpen={() => setActiveSection((current) => current === "00" ? null : "00")}>
-                <div data-field="companyName">
-                  <FieldShell label="Client / Company Name" required error={err("companyName")}>
-                    <input type="text" className={field("companyName")} placeholder="e.g. TXMX Boxing…" value={form.companyName} onChange={(e) => update("companyName", e.target.value)} />
-                  </FieldShell>
-                </div>
-              </Section>
               <p className="font-geist-mono text-xs uppercase tracking-[0.25em] text-neutral-400">
                 Submitted
               </p>
@@ -299,6 +294,22 @@ export default function IntakeFormPage() {
               exit={{ opacity: 0 }}
               className="mt-12 space-y-6"
             >
+              {/* 00 — CLIENT INFO */}
+              <Section index="00" title="Client Info" open={activeSection === "00"} onOpen={() => setActiveSection((current) => current === "00" ? null : "00")}>
+                <div className="space-y-5">
+                  <div data-field="companyName">
+                    <FieldShell label="Client / Company Name" required error={err("companyName")}>
+                      <input type="text" className={field("companyName")} placeholder="e.g. TXMX Boxing…" value={form.companyName} onChange={(e) => update("companyName", e.target.value)} />
+                    </FieldShell>
+                  </div>
+                  <div data-field="websiteUrl">
+                    <FieldShell label="Website URL">
+                      <input type="url" className={field("websiteUrl")} placeholder="https://example.com" value={form.websiteUrl ?? ""} onChange={(e) => update("websiteUrl", e.target.value)} />
+                    </FieldShell>
+                  </div>
+                </div>
+              </Section>
+
               {/* 01 — THE OPPORTUNITY */}
               <Section index="01" title="The Opportunity" open={activeSection === "01"} onOpen={() => setActiveSection((current) => current === "01" ? null : "01")}>
                 <div className="space-y-5">

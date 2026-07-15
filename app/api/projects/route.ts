@@ -2,6 +2,7 @@ import { FieldValue } from "firebase-admin/firestore";
 import { adminDb, firestoreConfigured } from "@/lib/firebase/admin";
 import { mockId, mockStore } from "@/lib/cms/mock-store";
 import type { CMSProject } from "@/lib/cms/types";
+import { logAppEvent, withApiLogging } from "@/lib/splunk/api-logging";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -13,7 +14,7 @@ function serialize(id: string, data: FirebaseFirestore.DocumentData): CMSProject
   return { id, ...data, createdAt: iso(data.createdAt), updatedAt: iso(data.updatedAt) } as CMSProject;
 }
 
-export async function GET() {
+export const GET = withApiLogging("/api/projects", async function GET() {
   try {
     if (!firestoreConfigured()) return Response.json({ projects: mockStore().projects, mode: "demo" });
     const snapshot = await adminDb().collection("cmsProjects").orderBy("updatedAt", "desc").limit(250).get();
@@ -21,9 +22,9 @@ export async function GET() {
   } catch (error) {
     return Response.json({ error: error instanceof Error ? error.message : "Unable to load projects." }, { status: 500 });
   }
-}
+});
 
-export async function POST(request: Request) {
+export const POST = withApiLogging("/api/projects", async function POST(request: Request) {
   try {
     const body = await request.json() as Partial<CMSProject>;
     if (!body.name?.trim() || !Array.isArray(body.slideData) || !["intake", "manual"].includes(body.sourceMode ?? "")) throw new Error("Invalid project data.");
@@ -38,6 +39,7 @@ export async function POST(request: Request) {
     const saved = await ref.get();
     return Response.json({ project: serialize(saved.id, saved.data()!) }, { status: 201 });
   } catch (error) {
+    logAppEvent("api_error", { route: "/api/projects", operation: "save_project", error_message: error instanceof Error ? error.message : "Unable to save project." });
     return Response.json({ error: error instanceof Error ? error.message : "Unable to save project." }, { status: 400 });
   }
-}
+});

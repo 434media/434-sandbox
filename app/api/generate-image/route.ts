@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
+import { logAppEvent, withApiLogging } from "@/lib/splunk/api-logging";
 
-export async function POST(req: NextRequest) {
+export const POST = withApiLogging("/api/generate-image", async function POST(req: NextRequest) {
   const { prompt } = await req.json();
 
   if (!prompt?.trim()) {
@@ -9,6 +10,7 @@ export async function POST(req: NextRequest) {
 
   const apiKey = process.env.GOOGLE_AI_API_KEY;
   if (!apiKey) {
+    logAppEvent("ai_generation", { route: "/api/generate-image", source: "error", reason: "missing_api_key" });
     return NextResponse.json(
       { error: "Add GOOGLE_AI_API_KEY to .env.local to enable AI image generation." },
       { status: 500 }
@@ -33,6 +35,7 @@ export async function POST(req: NextRequest) {
     const b64 = data?.predictions?.[0]?.bytesBase64Encoded;
     const mime = data?.predictions?.[0]?.mimeType ?? "image/png";
     if (b64) {
+      logAppEvent("ai_generation", { route: "/api/generate-image", source: "imagen" });
       return NextResponse.json({ imageUrl: `data:${mime};base64,${b64}` });
     }
   }
@@ -57,6 +60,7 @@ export async function POST(req: NextRequest) {
     const imgPart = parts.find((p) => p.inlineData?.data);
     if (imgPart?.inlineData) {
       const { data: b64, mimeType } = imgPart.inlineData;
+      logAppEvent("ai_generation", { route: "/api/generate-image", source: "gemini_image" });
       return NextResponse.json({ imageUrl: `data:${mimeType};base64,${b64}` });
     }
   }
@@ -68,5 +72,6 @@ export async function POST(req: NextRequest) {
     errorMsg = errData?.error?.message ?? errorMsg;
   } catch {}
 
+  logAppEvent("api_error", { route: "/api/generate-image", operation: "generate_image", error_message: errorMsg });
   return NextResponse.json({ error: errorMsg }, { status: 500 });
-}
+});

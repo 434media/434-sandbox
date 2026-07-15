@@ -2,6 +2,18 @@ import type { IntakeData } from "@/lib/cms/types";
 
 const fields = ["companyName", "objective", "whyNow", "geography", "audience", "budget"] as const;
 
+function optionalUrl(value: unknown) {
+  if (typeof value !== "string" || !value.trim()) return "";
+  const url = value.trim().slice(0, 1000);
+  try {
+    const parsed = new URL(url);
+    if (!["http:", "https:"].includes(parsed.protocol)) throw new Error("Unsupported protocol.");
+    return parsed.toString();
+  } catch {
+    throw new Error("websiteUrl must be a valid http or https URL.");
+  }
+}
+
 export function parseIntakeData(value: unknown): IntakeData {
   if (!value || typeof value !== "object") throw new Error("A valid intake submission is required.");
   const body = value as Record<string, unknown>;
@@ -14,6 +26,7 @@ export function parseIntakeData(value: unknown): IntakeData {
   const text = (key: string) => typeof body[key] === "string" ? (body[key] as string).trim().slice(0, 5000) : "";
   return {
     companyName: text("companyName").slice(0, 200),
+    websiteUrl: optionalUrl(body.websiteUrl),
     objective: text("objective").slice(0, 200),
     whyNow: text("whyNow"),
     geography: text("geography").slice(0, 500),
@@ -38,4 +51,3 @@ export function scoreIntake(data: IntakeData): number {
   if (data.whyNow.length >= 40) score += 5;
   return Math.min(100, score);
 }
-

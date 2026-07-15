@@ -5,6 +5,7 @@ export type DeckStatus = "not_started" | "ready_to_generate" | "generated";
 
 export interface IntakeData {
   companyName: string;
+  websiteUrl?: string;
   objective: string;
   whyNow: string;
   geography: string;
@@ -46,4 +47,3 @@ export interface AnalyticsMetrics {
   generatedDecks: number;
   averageLeadScore: number;
 }
-
