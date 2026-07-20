@@ -17,7 +17,7 @@ export default function Footer() {
   const currentYear = new Date().getFullYear()
 
   // Hide the public footer on admin routes and the full-screen squads deck
-  if (pathname?.startsWith("/admin") || pathname?.startsWith("/squads")) {
+  if (pathname?.startsWith("/admin") || pathname?.startsWith("/squads") || pathname?.startsWith("/apollo")) {
     return null
   }
 
@@ -253,4 +253,3 @@ export default function Footer() {
     </footer>
   )
 }
-

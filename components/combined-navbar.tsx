@@ -39,7 +39,7 @@ export function CombinedNavbar() {
 
   // Hide the public navbar entirely on admin routes — admin has its own shell.
   // Also hide on the full-screen squads deck (/squads).
-  if (pathname?.startsWith("/admin") || pathname?.startsWith("/squads")) {
+  if (pathname?.startsWith("/admin") || pathname?.startsWith("/squads") || pathname?.startsWith("/apollo")) {
     return null;
   }
 
