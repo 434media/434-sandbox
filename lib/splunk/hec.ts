@@ -5,8 +5,6 @@ import os from "node:os";
 
 type SplunkEvent = Record<string, unknown>;
 
-const LOCAL_SPLUNK_HOSTS = new Set(["localhost", "127.0.0.1", "::1"]);
-
 function splunkEnabled() {
   return process.env.SPLUNK_ENABLED === "true";
 }
@@ -44,10 +42,6 @@ function postToSplunk(body: string, config: NonNullable<ReturnType<typeof splunk
 
   if (url.hostname === "localhost") {
     requestOptions.family = 4;
-  }
-
-  if (isHttps && LOCAL_SPLUNK_HOSTS.has(url.hostname)) {
-    requestOptions.rejectUnauthorized = false;
   }
 
   const req = client.request(requestOptions, (res) => {
